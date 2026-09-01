@@ -1,6 +1,6 @@
 /* MedVault service worker — offline shell + safe updates.
    Bump CACHE when you change any precached file.                    */
-const CACHE = 'medvault-v1';
+const CACHE = 'medvault-v3';
 const SHELL = [
   './',
   './index.html',
