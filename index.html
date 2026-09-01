@@ -1823,7 +1823,7 @@ async function ingest(objs){
   save();
   return {addedLO, addedQ, addedExam, addedKey};
 }
-async function importFiles(files){
+async function importFiles(files, opts){
   const objs=[], pdfs=[];
   for(const f of files){
     if(/\.pdf$/i.test(f.name) || f.type==='application/pdf'){ pdfs.push(f); continue; }
@@ -1849,7 +1849,11 @@ async function importFiles(files){
   else toast(bits.length? 'Imported '+bits.join(', ')+'.' : 'Nothing new to import.');
   const pending=Object.values(S.pdfKeys).filter(k=>!S.pdfExams[k.pdf]).map(k=>k.pdf);
   if(pending.length && !pdfFail.length) setTimeout(()=>toast('Add the PDF file(s) to finish: '+pending.join(', '), true), 2600);
-  renderView(current); renderTop();
+  // Re-rendering rebuilds the view from scratch, which would throw away a paper
+  // the user is part-way through. Skip it when asked, and never do it mid-session.
+  const midSession = quiz && current==='study';
+  if(!(opts && opts.noRender) && !midSession) renderView(current);
+  renderTop();
 }
 
 async function connectFolder(){
@@ -3933,7 +3937,7 @@ async function fetchPdfFromRepo(pdfId){
   if(!hit) return false;
   toast('Fetching '+pdfId+' from the repo…');
   const buf = await ghBlob(hit.sha);
-  await importFiles([new File([buf], pdfId, {type:'application/pdf'})]);
+  await importFiles([new File([buf], pdfId, {type:'application/pdf'})], {noRender:true});
   const seen = await libSeenGet(); seen[hit.path]=hit.sha; await DB.set('libSeen', seen);
   return true;
 }
