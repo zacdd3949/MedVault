@@ -288,6 +288,89 @@ html[data-glow="off"] .syncdot,html[data-glow="off"] .pulse{ box-shadow:none !im
   .diagbox{padding:13px}
 }
 
+
+/* ============================================================
+   THE VAULT — entrance
+   ============================================================ */
+.vault{position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 50% 40%, #0d1a22 0%, #070b10 55%, #04070a 100%);
+  overflow:hidden;animation:vfade .5s ease both}
+@keyframes vfade{from{opacity:0}to{opacity:1}}
+.vault::before{content:'';position:absolute;inset:-50%;
+  background-image:linear-gradient(var(--line-soft) 1px,transparent 1px),linear-gradient(90deg,var(--line-soft) 1px,transparent 1px);
+  background-size:44px 44px;opacity:.28;
+  transform:perspective(560px) rotateX(62deg) translateY(8%);
+  animation:vgrid 26s linear infinite}
+@keyframes vgrid{to{background-position:0 44px,44px 0}}
+.vault::after{content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 45%, transparent 30%, rgba(4,7,10,.85) 78%)}
+
+.vstage{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;
+  padding:24px;width:100%;max-width:430px}
+.vdoor{position:relative;width:290px;height:290px;display:flex;align-items:center;justify-content:center;
+  filter:drop-shadow(0 0 46px rgba(44,208,191,.16))}
+.vdoor svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.vspin-a{transform-origin:50% 50%;animation:vrot 34s linear infinite}
+.vspin-b{transform-origin:50% 50%;animation:vrot 22s linear infinite reverse}
+.vspin-c{transform-origin:50% 50%;animation:vrot 60s linear infinite}
+@keyframes vrot{to{transform:rotate(360deg)}}
+.vbolt{transform-origin:50% 50%;transition:transform .7s cubic-bezier(.6,-0.3,.3,1.4)}
+.vtick{opacity:.5}
+
+.vcore{position:relative;z-index:3;text-align:center;width:200px}
+.vbrand{font-family:var(--mono);font-size:15px;letter-spacing:.42em;text-indent:.42em;
+  color:var(--text);margin:0 0 4px;font-weight:500}
+.vsub{font-family:var(--mono);font-size:9.5px;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--muted-2);margin:0 0 16px}
+.vinput{width:100%;background:rgba(6,12,16,.85);border:1px solid var(--teal-dim);border-radius:10px;
+  padding:11px 10px;text-align:center;font-family:var(--mono);font-size:15px;letter-spacing:.2em;
+  color:var(--teal);outline:none;transition:.2s;text-transform:lowercase}
+.vinput::placeholder{color:var(--muted-2);letter-spacing:.12em;text-transform:none}
+.vinput:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(44,208,191,.12),0 0 24px rgba(44,208,191,.18)}
+.vgo{width:100%;margin-top:10px;padding:11px;border-radius:10px;border:1px solid var(--teal-dim);
+  background:linear-gradient(180deg,rgba(44,208,191,.16),rgba(44,208,191,.05));color:var(--teal);
+  font-family:var(--mono);font-size:11.5px;letter-spacing:.24em;text-transform:uppercase;cursor:pointer;transition:.18s}
+.vgo:hover{background:linear-gradient(180deg,rgba(44,208,191,.28),rgba(44,208,191,.1));box-shadow:0 0 26px rgba(44,208,191,.22)}
+.vgo:disabled{opacity:.45;cursor:default}
+.vmsg{margin-top:12px;font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;line-height:1.5;
+  color:var(--amber);min-height:28px}
+.vmsg.busy{color:var(--muted-2)}
+.vcfgbtn{margin-top:6px;background:none;border:0;color:var(--muted-2);font-family:var(--mono);
+  font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;padding:6px}
+.vcfgbtn:hover{color:var(--teal)}
+.vcfg{display:none;text-align:left;margin-top:12px;padding:14px;border:1px solid var(--line);
+  border-radius:12px;background:rgba(8,14,19,.9);width:100%;max-width:330px}
+
+/* enter */
+.vault.entering .vspin-a{animation:vspinfast 1.05s cubic-bezier(.3,0,.2,1) forwards}
+.vault.entering .vspin-b{animation:vspinfastr 1.05s cubic-bezier(.3,0,.2,1) forwards}
+@keyframes vspinfast{to{transform:rotate(540deg)}}
+@keyframes vspinfastr{to{transform:rotate(-540deg)}}
+.vault.entering .vbolt{transform:scale(1.42)}
+.vault.entering .vcore{animation:vcoreout .5s .45s ease-in forwards}
+@keyframes vcoreout{to{opacity:0;transform:scale(.9)}}
+.vault.entering .vdoor{animation:vdooropen .8s .5s cubic-bezier(.6,0,.2,1) forwards}
+@keyframes vdooropen{to{transform:scale(2.9);opacity:0;filter:drop-shadow(0 0 90px rgba(44,208,191,.5))}}
+.vault.entering{animation:vout .55s .75s ease forwards}
+@keyframes vout{to{opacity:0;visibility:hidden}}
+
+/* reject */
+.vault.denied .vdoor{animation:vshake .5s cubic-bezier(.36,.07,.19,.97)}
+.vault.denied .vring-main{stroke:var(--red)!important}
+@keyframes vshake{10%,90%{transform:translateX(-3px)}20%,80%{transform:translateX(5px)}
+  30%,50%,70%{transform:translateX(-8px)}40%,60%{transform:translateX(8px)}}
+
+/* the app is assembled behind the door */
+body.locked .app,body.locked .tabbar{filter:blur(7px) saturate(.6);pointer-events:none;user-select:none;transform:scale(.985)}
+body.locked{overflow:hidden}
+.appreveal .app{animation:vreveal .7s cubic-bezier(.2,.7,.3,1) both}
+@keyframes vreveal{from{opacity:0;transform:scale(1.03);filter:blur(9px)}to{opacity:1;transform:none;filter:none}}
+@media (max-width:760px){ .vdoor{width:250px;height:250px} .vcore{width:180px} }
+@media (prefers-reduced-motion:reduce){
+  .vspin-a,.vspin-b,.vspin-c,.vault::before{animation:none}
+  .vault.entering .vdoor,.vault.entering .vcore{animation-duration:.01s}
+}
+
 /* ---------- login gate ---------- */
 .linkbtn{background:none;border:0;color:var(--muted);font-family:inherit;font-size:12.5px;
   text-decoration:underline;text-underline-offset:3px;cursor:pointer;margin-top:14px;padding:4px}
@@ -316,6 +399,33 @@ body.locked .app,body.locked .tabbar{filter:blur(3px);pointer-events:none;user-s
 .syncline{display:flex;align-items:center;gap:7px;margin-top:7px;font-size:10.5px;
   font-family:var(--mono);color:var(--muted-2);letter-spacing:.02em}
 .syncrow{display:flex;align-items:center;gap:13px;flex-wrap:wrap}
+
+/* ---------- end-of-session review ---------- */
+.reviewbox{margin-top:20px;text-align:left}
+.revtoggle{width:100%;display:flex;align-items:center;gap:9px;padding:12px 14px;border-radius:12px;
+  border:1px solid var(--line);background:var(--panel-2);color:var(--text);font-family:inherit;
+  font-size:13.5px;cursor:pointer;transition:.15s}
+.revtoggle:hover{border-color:var(--teal-dim);background:var(--raise)}
+.revtoggle svg{width:15px;height:15px;color:var(--muted);transition:transform .2s}
+.reviewbox.open .revtoggle svg{transform:rotate(180deg)}
+.revlist{display:none;flex-direction:column;gap:11px;margin-top:11px}
+.reviewbox.open .revlist{display:flex}
+.revcard{padding:14px;border:1px solid var(--line-soft);border-left:3px solid var(--red);
+  border-radius:12px;background:var(--panel-2)}
+.revcard.guess{border-left-color:var(--amber)}
+.revstem{font-size:14px;line-height:1.5;margin-bottom:11px}
+.revopt{display:flex;align-items:flex-start;gap:9px;padding:8px 10px;border-radius:9px;
+  font-size:13px;margin-bottom:6px;background:var(--ink-2);border:1px solid transparent}
+.revopt .key{font-family:var(--mono);font-size:11px;width:20px;height:20px;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;flex:0 0 auto;border:1px solid var(--line)}
+.revopt span:nth-child(2){flex:1;min-width:0}
+.revopt i{font-family:var(--mono);font-size:10px;font-style:normal;flex:0 0 auto;opacity:.8}
+.revopt.ok{border-color:rgba(67,201,138,.4);background:rgba(67,201,138,.08);color:var(--green)}
+.revopt.bad{border-color:rgba(239,100,97,.35);background:rgba(239,100,97,.07);color:#ffb3b1}
+.revexp{font-size:12.5px;line-height:1.6;color:var(--muted);padding-top:10px;margin-top:4px;
+  border-top:1px solid var(--line-soft)}
+.revmeta{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+@media(max-width:760px){ .revstem{font-size:13.5px} .revcard{padding:12px} }
 
 /* ---------- forecast ---------- */
 .fcrow{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
@@ -1057,7 +1167,8 @@ function loMastery(loId){
   const atts = loAttempts(loId).sort((a,b)=>a.ts-b.ts);
   if(!atts.length) return {reps:0, accuracy:0, mastery:0, lastTs:null, retention:0, studied:false};
   const recent = atts.slice(-set.recentWindow);
-  const accuracy = recent.reduce((s,a)=>s+(a.correct?1:0),0)/recent.length;
+  // a correct answer you flagged as a guess counts half — it inflates readiness otherwise
+  const accuracy = recent.reduce((s,a)=>s+(a.correct? (a.conf==='guess'?0.5:1) : 0),0)/recent.length;
   const reps = atts.length;
   const confidence = clamp(reps/set.targetReps,0,1);
   const lastTs = atts[atts.length-1].ts;
@@ -1572,11 +1683,8 @@ function renderStudySetup(){
   function drawDetail(){
     if(scope==='mini'){
       detail.innerHTML = `
-        <div class="eyebrow" style="margin-bottom:8px">Questions per objective</div>
-        <div class="pills" id="miniN">${[1,2,3,5].map(n=>`<div class="pill ${n===2?'on':''}" data-n="${n}">${n}</div>`).join('')}</div>
-        <p class="hint" style="margin:12px 0 0">Samples evenly across <b>every objective that has questions</b>, so the paper covers the whole course rather than whatever you have practised most. Afterwards you get a heatmap of which weeks and topics held up.</p>
-        <div id="miniInfo" class="hint" style="margin-top:8px"></div>`;
-      $$('#miniN .pill').forEach(p=>p.onclick=()=>{ $$('#miniN .pill').forEach(x=>x.classList.remove('on')); p.classList.add('on'); updatePool(); });
+        <p class="hint" style="margin:0">A fixed paper: <b>${MINI_PER} questions from every objective that has them</b>, drawn fresh each time. It covers the whole course rather than whatever you have practised most, and afterwards you get a heatmap of which weeks and topics held up.</p>
+        <div id="miniInfo" class="hint" style="margin-top:10px"></div>`;
     } else if(scope==='weeks'){
       detail.innerHTML = `<div class="btnrow" style="justify-content:space-between;margin-bottom:8px">
           <div class="eyebrow">Select weeks</div>
@@ -1665,7 +1773,7 @@ function renderStudySetup(){
     const qs=liveQuestions();
     let base;
     if(scope==='mini'){
-      const per = +(($('#miniN .pill.on')||{dataset:{}}).dataset.n || 2);
+      const per = MINI_PER;
       const byLo = new Map();
       for(const q of qs) for(const l of (q.los||[])) { if(!byLo.has(l)) byLo.set(l, []); byLo.get(l).push(q); }
       const picked = new Map();                       // a question covering two objectives counts once
@@ -1710,10 +1818,10 @@ function renderStudySetup(){
     $('#beginBtn').disabled = pool.length===0;
     const mi=$('#miniInfo');
     if(mi){
-      const per = +(($('#miniN .pill.on')||{dataset:{}}).dataset.n || 2);
+      const per = MINI_PER;
       const nLo = assessableLOs().length;
       const wks = new Set(assessableLOs().map(l=>l.week??0)).size;
-      mi.innerHTML = `<b class="mono" style="color:var(--teal)">${pool.length}</b> questions · up to ${per} from each of ${nLo} objectives across ${wks} week${wks===1?'':'s'}.`;
+      mi.innerHTML = `<b class="mono" style="color:var(--teal);font-size:15px">${pool.length}</b> questions · ${per} from each of ${nLo} objectives across ${wks} week${wks===1?'':'s'}.`;
     }
     window.__pool=pool;
   }
@@ -1793,11 +1901,11 @@ function answer(sel){
   const qlos = (q.los||[]).filter(l=>S.los[l]);
   if(qlos.length && secs){ const per=secs/qlos.length; quiz.alloc=quiz.alloc||{}; qlos.forEach(l=>quiz.alloc[l]=(quiz.alloc[l]||0)+per); }
   // record
-  const at={id:uid('at'), qId:q.id, los:q.los||[], topic:q.topic||null, correct, ts:Date.now(), secs};
+  const at={id:uid('at'), qId:q.id, los:q.los||[], topic:q.topic||null, correct, ts:Date.now(), secs, chosen:sel};
   S.attempts.push(at); quiz.results.push(correct); save();
   $('#afterQ').innerHTML = `
     ${q.explanation?`<div class="explain"><div class="lbl">${correct?'Correct':'Explanation'}</div>${esc(q.explanation)}</div>`:''}
-    ${correct?'':reasonPickerHTML(at.id)}
+    ${correct? confPickerHTML(at.id) : reasonPickerHTML(at.id)}
     <div class="btnrow" style="margin-top:16px;justify-content:flex-end">
       <span class="q-count" style="margin-right:auto">${correct?'<span style="color:var(--green)">✓ correct</span>':'<span style="color:var(--red)">✗ incorrect</span>'}</span>
       ${isDev()?`<button class="btn ghost sm" id="suspendQ" title="Retire this question for everyone">Suspend</button>`:''}
@@ -1810,7 +1918,7 @@ function answer(sel){
     sq.disabled=true; sq.textContent='Suspended';
     toast('Suspended. Publish it from Data → Repo library to retire it for everyone.');
   };
-  if(!correct) wireReasonPicker(at.id);
+  if(correct) wireConfPicker(at.id); else wireReasonPicker(at.id);
   $('#nextQ').onclick=()=>{ quiz.i++; drawQuestion(); };
   renderTop();
 }
@@ -1831,6 +1939,33 @@ const REASONS = [
    advice:'Knew it, picked the wrong box. Worth tracking — if this climbs, you are rushing or tired.'}
 ];
 const reasonById = id => REASONS.find(r=>r.id===id) || null;
+const CONFS = [
+  {id:'sure',  label:'Knew it',  color:'#2CD0BF', advice:'Solid. This one is banked.'},
+  {id:'guess', label:'Guessed',  color:'#E8A13C', advice:'Counts half toward mastery — a lucky guess is not knowledge. Worth a proper look before the exam.'}
+];
+function confPickerHTML(atId){
+  return `<div class="reasonbox conf" id="confBox_${atId}">
+    <div class="lbl">Did you actually know it? <span style="color:var(--muted-2);text-transform:none;letter-spacing:0">— optional, keys 1–2</span></div>
+    <div class="reasons">${CONFS.map((c,i)=>`<button class="reason" data-conf="${c.id}" style="--rc:${c.color}">
+      <span class="rk">${i+1}</span>${c.label}</button>`).join('')}</div>
+  </div>`;
+}
+function wireConfPicker(atId){
+  const box=document.getElementById('confBox_'+atId); if(!box) return;
+  box.querySelectorAll('[data-conf]').forEach(b=>b.onclick=()=>setConf(atId, b.dataset.conf));
+}
+function setConf(atId, cid){
+  const at=S.attempts.find(a=>a.id===atId); if(!at) return;
+  at.conf = at.conf===cid ? null : cid;
+  save();
+  const box=document.getElementById('confBox_'+atId); if(!box) return;
+  box.querySelectorAll('[data-conf]').forEach(b=>b.classList.toggle('on', b.dataset.conf===at.conf));
+  const c=CONFS.find(x=>x.id===at.conf);
+  let tip=box.querySelector('.radvice');
+  if(!tip){ tip=document.createElement('div'); tip.className='radvice'; box.appendChild(tip); }
+  tip.textContent = c? c.advice : '';
+  tip.style.display = c? 'block':'none';
+}
 function reasonPickerHTML(atId){
   return `<div class="reasonbox" id="reasonBox_${atId}">
     <div class="lbl">Why did this one go wrong? <span style="color:var(--muted-2);text-transform:none;letter-spacing:0">— optional, one tap, keys 1–5</span></div>
@@ -1914,6 +2049,7 @@ function finishQuiz(){
     ${diag}
     ${logged?`<p class="mono" style="font-size:12.5px;color:var(--muted-2);margin-top:10px">
       <span style="color:var(--teal)">✓ logged</span> ${fmtMins(logged.mins)} to ${logged.los.length} objective${logged.los.length===1?'':'s'}</p>`:''}
+    ${reviewHTML()}
     <div class="btnrow" style="justify-content:center;margin-top:20px">
       <button class="btn" onclick='renderStudySetup()'>New session</button>
       <button class="btn" onclick='go("track")'>Study tracker</button>
@@ -3538,6 +3674,7 @@ function drawReasonAnalytics(){
    Put that folder inside OneDrive/Dropbox/iCloud and every device that opens
    MedVault converges on the same data, with no server and no account.
    ============================================================ */
+const MINI_PER = 2;                 // questions drawn from every objective in a mini exam
 const SYNC_FILE = 'medvault-state.json';
 const SYNC_FORMAT = 1;
 
@@ -4770,72 +4907,119 @@ async function doLogout(){
 }
 
 /* ---- the gate ---- */
-function showLock(msg){
+function vaultDoorSVG(){
+  const ticks = Array.from({length:48},(_,i)=>{
+    const a=i*7.5*Math.PI/180, r1=i%4===0?118:123, r2=130;
+    return `<line x1="${(150+Math.cos(a)*r1).toFixed(1)}" y1="${(150+Math.sin(a)*r1).toFixed(1)}"
+      x2="${(150+Math.cos(a)*r2).toFixed(1)}" y2="${(150+Math.sin(a)*r2).toFixed(1)}"
+      stroke="currentColor" stroke-width="${i%4===0?1.5:0.8}" class="vtick"/>`;}).join('');
+  const spokes = Array.from({length:8},(_,i)=>{
+    const a=i*45*Math.PI/180;
+    return `<line x1="${(150+Math.cos(a)*44).toFixed(1)}" y1="${(150+Math.sin(a)*44).toFixed(1)}"
+      x2="${(150+Math.cos(a)*96).toFixed(1)}" y2="${(150+Math.sin(a)*96).toFixed(1)}"
+      stroke="currentColor" stroke-width="2.4" stroke-linecap="round" opacity=".5"/>`;}).join('');
+  const bolts = Array.from({length:6},(_,i)=>{
+    const a=(i*60+30)*Math.PI/180;
+    return `<rect x="${(150+Math.cos(a)*104-5).toFixed(1)}" y="${(150+Math.sin(a)*104-5).toFixed(1)}"
+      width="10" height="10" rx="2.5" fill="currentColor" opacity=".75"
+      transform="rotate(${i*60+30} ${(150+Math.cos(a)*104).toFixed(1)} ${(150+Math.sin(a)*104).toFixed(1)})"/>`;}).join('');
+  return `<svg viewBox="0 0 300 300" style="color:var(--teal)">
+    <circle cx="150" cy="150" r="138" fill="none" stroke="var(--line)" stroke-width="1"/>
+    <circle class="vring-main" cx="150" cy="150" r="126" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".75"/>
+    <g class="vspin-c">${ticks}</g>
+    <g class="vspin-a">
+      <circle cx="150" cy="150" r="112" fill="none" stroke="currentColor" stroke-width="2.6"
+        stroke-dasharray="150 74" stroke-linecap="round" opacity=".9"/>
+    </g>
+    <g class="vbolt">${bolts}</g>
+    <g class="vspin-b">
+      <circle cx="150" cy="150" r="96" fill="none" stroke="currentColor" stroke-width="1.2"
+        stroke-dasharray="6 13" opacity=".55"/>
+      ${spokes}
+    </g>
+    <circle cx="150" cy="150" r="72" fill="rgba(6,12,17,.75)" stroke="var(--line)" stroke-width="1"/>
+    <circle cx="150" cy="150" r="44" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".45"/>
+  </svg>`;
+}
+function showLock(msg, opts){
   let el = $('#lockScreen');
   if(!el){
     el = document.createElement('div');
-    el.id='lockScreen'; el.className='lockscreen';
+    el.id='lockScreen'; el.className='vault';
     document.body.appendChild(el);
   }
+  const known = knownLogins.length;
   el.innerHTML = `
-    <div class="lockcard">
-      <svg class="mark" viewBox="0 0 48 48" fill="none" style="width:52px;height:52px">
-        <rect x="4" y="4" width="40" height="40" rx="11" fill="#0E1922" stroke="#1E2C39"/>
-        <path d="M24 15v18M15 24h18" stroke="#2CD0BF" stroke-width="3.4" stroke-linecap="round"/>
-      </svg>
-      <h1>MedVault</h1>
-      <p>Enter your login word to open your vault.</p>
-      <input type="text" id="lockWord" placeholder="login word" autocomplete="off"
-        autocapitalize="off" autocorrect="off" spellcheck="false">
-      <button class="btn primary" id="lockGo">Open</button>
-      <div class="lockmsg" id="lockMsg">${msg?esc(msg):''}</div>
-      <button class="linkbtn" id="lockCfgToggle">Connection settings</button>
-      <div id="lockCfg" style="display:none;text-align:left;margin-top:14px">
+    <div class="vstage">
+      <div class="vdoor">
+        ${vaultDoorSVG()}
+        <div class="vcore">
+          <h1 class="vbrand">MEDVAULT</h1>
+          <p class="vsub">${known? 'welcome back' : 'sealed'}</p>
+          <input type="text" class="vinput" id="lockWord" placeholder="login word"
+            autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+          <button class="vgo" id="lockGo">Unlock</button>
+        </div>
+      </div>
+      <div class="vmsg" id="lockMsg">${msg?esc(msg):''}</div>
+      <button class="vcfgbtn" id="lockCfgToggle">connection</button>
+      <div class="vcfg" id="lockCfg">
         <label class="fld"><span>Repository</span>
           <input type="text" id="lockRepo" placeholder="you/medvault-data" value="${esc(S.settings.ghRepo||'')}"
             autocapitalize="off" autocorrect="off" spellcheck="false"></label>
         <label class="fld"><span>Access token</span>
-          <input type="password" id="lockTok" placeholder="${ghTok?'••••••  saved on this device':'github_pat_…'}"
-            autocomplete="off"></label>
+          <input type="password" id="lockTok" placeholder="${ghTok?'saved on this device':'github_pat_…'}" autocomplete="off"></label>
         <button class="btn sm" id="lockSaveCfg" style="width:100%;justify-content:center">Save connection</button>
-        <p class="hint" style="margin:10px 0 0">Only needed if this device has been reset or is new.</p>
+        <p class="hint" style="margin:10px 0 0">Only needed on a new or reset device.</p>
       </div>
     </div>`;
   document.body.classList.add('locked');
+
+  const msgEl = ()=>$('#lockMsg');
+  const deny = t => {
+    el.classList.add('denied');
+    const m=msgEl(); if(m){ m.classList.remove('busy'); m.textContent=t; }
+    setTimeout(()=>el.classList.remove('denied'), 600);
+  };
   const go = async()=>{
     const b=$('#lockGo'), inp=$('#lockWord');
-    const word=inp.value;
-    if(!normLogin(word)){ $('#lockMsg').textContent='Type your word first.'; return; }
-    b.disabled=true; $('#lockMsg').textContent='Checking…';
-    const res = await doLogin(word);
+    if(!normLogin(inp.value)){ deny('Enter your word.'); inp.focus(); return; }
+    b.disabled=true;
+    const m=msgEl(); if(m){ m.classList.add('busy'); m.textContent='verifying…'; }
+    const res = await doLogin(inp.value);
     if(!res.ok){
       b.disabled=false;
-      $('#lockMsg').textContent =
-        res.reason==='unknown' ? 'That word has no vault. Check the spelling, or ask for a new one.' :
-        res.reason==='offline' ? 'No connection, and this word has not been used on this device before.' :
-        res.reason==='norepo'  ? 'No repository set on this device — open Connection below.' :
-        res.reason==='notoken' ? 'No access token on this device — open Connection below.' : 'Try again.';
-    } else if(res.offline){ toast('Opened offline — will sync when you are back online.'); }
+      deny(res.reason==='unknown' ? 'No vault answers to that word.' :
+           res.reason==='offline' ? 'Offline, and this word has never opened this device.' :
+           res.reason==='norepo'  ? 'No repository set — open connection below.' :
+           res.reason==='notoken' ? 'No access token — open connection below.' : 'Try again.');
+    }
   };
   $('#lockGo').onclick=go;
   $('#lockWord').onkeydown=e=>{ if(e.key==='Enter') go(); };
   $('#lockCfgToggle').onclick=()=>{
     const c=$('#lockCfg');
-    c.style.display = c.style.display==='none' ? 'block' : 'none';
+    c.style.display = c.style.display==='block' ? 'none' : 'block';
   };
   $('#lockSaveCfg').onclick=async()=>{
     const r=$('#lockRepo').value.trim().replace(/^https?:\/\/github\.com\//,'').replace(/\.git$/,'');
     const t=$('#lockTok').value.trim();
     if(r){ S.settings.ghRepo=r; if(!S.settings.ghPath) S.settings.ghPath=SYNC_FILE; save(); }
     if(t){ ghTok=t; await DB.set('ghTok', t); $('#lockTok').value=''; }
-    $('#lockMsg').textContent='Connection saved — now enter your word.';
+    const m=msgEl(); if(m){ m.classList.add('busy'); m.textContent='connection saved — enter your word'; }
     $('#lockWord').focus();
   };
-  setTimeout(()=>{ const i=$('#lockWord'); if(i) i.focus(); }, 60);
+  if(!(opts&&opts.noFocus)) setTimeout(()=>{ const i=$('#lockWord'); if(i) i.focus(); }, 420);
 }
-function hideLock(){
-  const el=$('#lockScreen'); if(el) el.remove();
+function hideLock(instant){
+  const el=$('#lockScreen');
+  if(!el){ document.body.classList.remove('locked'); return; }
+  if(instant){ el.remove(); document.body.classList.remove('locked'); return; }
+  const m=$('#lockMsg'); if(m){ m.classList.add('busy'); m.textContent='access granted'; }
+  el.classList.add('entering');
   document.body.classList.remove('locked');
+  document.body.classList.add('appreveal');
+  setTimeout(()=>{ el.remove(); document.body.classList.remove('appreveal'); }, 1350);
 }
 
 /* ---- developer: mint new login words ---- */
@@ -4928,6 +5112,67 @@ function drawAcctCard(){
       }catch(e){ msg('<span style="color:var(--red)">Could not list them.</span>'); }
     };
   }
+}
+
+/* ---- end-of-session review: the wrong ones, all in one place ---- */
+function sessionWrong(){
+  if(!quiz) return [];
+  const out=[];
+  quiz.items.forEach((q,i)=>{
+    if(i>=quiz.results.length || quiz.results[i]) return;
+    const at=[...S.attempts].reverse().find(a=>a.qId===q.id);
+    out.push({q, at});
+  });
+  return out;
+}
+function sessionGuessed(){
+  if(!quiz) return [];
+  const out=[];
+  quiz.items.forEach((q,i)=>{
+    if(i>=quiz.results.length || !quiz.results[i]) return;
+    const at=[...S.attempts].reverse().find(a=>a.qId===q.id);
+    if(at && at.conf==='guess') out.push({q, at});
+  });
+  return out;
+}
+function reviewHTML(){
+  const wrong=sessionWrong(), guessed=sessionGuessed();
+  if(!wrong.length && !guessed.length) return '';
+  const card = (item, kind) => {
+    const {q, at}=item;
+    // the attempt stores the option index; the key is a letter
+    const raw = at && at.chosen;
+    const chosen = (typeof raw==='number') ? 'ABCDE'[raw] : raw;
+    const correctKey = q.answer;
+    const optLine = (key, text) => {
+      const isC = String(key).toUpperCase()===String(correctKey).toUpperCase();
+      const isP = chosen && String(key).toUpperCase()===String(chosen).toUpperCase();
+      if(!isC && !isP) return '';
+      return `<div class="revopt ${isC?'ok':'bad'}"><span class="key">${esc(String(key))}</span>
+        <span>${esc(text||'')}</span><i>${isC?'correct':'your answer'}</i></div>`;
+    };
+    const opts=(q.options||[]).map((t,i)=>optLine('ABCDE'[i], t)).join('');
+    const r = at && at.reason ? reasonById(at.reason) : null;
+    return `<div class="revcard ${kind}">
+      <div class="revstem">${q.n?`<b class="mono">Q${q.n}</b> `:''}${esc(q.stem||('Question '+q.id))}</div>
+      ${opts || (chosen?`<div class="revopt bad"><span class="key">${esc(String(chosen))}</span><span>your answer</span></div>
+        <div class="revopt ok"><span class="key">${esc(String(correctKey))}</span><span>correct</span></div>`:'')}
+      ${q.explanation?`<div class="revexp">${esc(q.explanation)}</div>`:''}
+      <div class="revmeta">
+        ${(q.los||[]).slice(0,3).map(l=>`<span class="tag lo">${esc(l)}</span>`).join('')}
+        ${r?`<span class="mini-tag" style="color:${r.color};border-color:${r.color}55">${esc(r.short)}</span>`:''}
+        ${kind==='guess'?`<span class="mini-tag" style="color:var(--amber);border-color:rgba(232,161,60,.4)">lucky guess</span>`:''}
+      </div></div>`;
+  };
+  return `<div class="reviewbox">
+    <button class="revtoggle" onclick="this.parentNode.classList.toggle('open')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      Review ${wrong.length} wrong${guessed.length? ' and '+guessed.length+' guessed':''}
+    </button>
+    <div class="revlist">
+      ${wrong.map(x=>card(x,'wrong')).join('')}
+      ${guessed.map(x=>card(x,'guess')).join('')}
+    </div></div>`;
 }
 
 /* ============================================================
@@ -5072,6 +5317,8 @@ function wire(){
     if(ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;   // never hijack typing
     if(current==='study' && $('#studyRun').style.display!=='none' && quiz){
       const opts=$$('#opts .opt'); if(opts.length && !opts[0].disabled){ const k=e.key.toUpperCase(); const idx='ABCDE'.indexOf(k); if(idx>=0&&idx<opts.length){ opts[idx].click(); } }
+      const cb=document.querySelector('[id^="confBox_"]');
+      if(cb && /^[1-2]$/.test(e.key)){ const b=cb.querySelectorAll('[data-conf]')[+e.key-1]; if(b){ e.preventDefault(); b.click(); } }
       const rb=document.querySelector('[id^="reasonBox_"]');
       if(rb && /^[1-5]$/.test(e.key)){ const btns=rb.querySelectorAll('[data-reason]'); const b=btns[+e.key-1]; if(b){ e.preventDefault(); b.click(); } }
       if((e.key==='Enter'||e.key===' ') && $('#nextQ')){ e.preventDefault(); $('#nextQ').click(); }
