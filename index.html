@@ -1937,7 +1937,7 @@ function hl(s){ return esc(s)
   .replace(/\/\/[^\n]*/g,'<span class="c">$&</span>'); }
 
 async function ingest(objs){
-  let addedLO=0, addedQ=0, addedExam=0, addedKey=0;
+  let addedLO=0, addedQ=0, addedExam=0, addedKey=0, addedIdx=0;
   for(let raw of objs){
     if(raw && raw.type==='medvault_backup'){ // full restore handled elsewhere
       continue;
@@ -1945,8 +1945,12 @@ async function ingest(objs){
     const items = (raw && raw.type==='medvault_bundle') ? [].concat(raw.learning_objectives||[], raw.exams||[]) : [raw];
     for(const o of items){
       if(!o||typeof o!=='object') continue;
-      const type=o.type || (o.pdf && Array.isArray(o.questions) && o.questions[0] && ('n' in o.questions[0]) ? 'exam_pdf_key'
+      let type=o.type || (o.pdf && Array.isArray(o.index) ? 'pdf_index'
+                 : o.pdf && Array.isArray(o.questions) && o.questions[0] && ('n' in o.questions[0]) ? 'exam_pdf_key'
                  : o.questions?'exam': (o.los||o.weeks)?'learning_objectives':null);
+      // accept the prefixed names MedVault writes as well as the bare ones
+      type = ({medvault_pdf_index:'pdf_index', medvault_pdf_key:'exam_pdf_key',
+               medvault_los:'learning_objectives', medvault_exam:'exam'})[type] || type;
       if(type==='learning_objectives'){
         const weeks = o.weeks || [{week:o.week, title:o.title||o.weekTitle, los:o.los||[]}];
         for(const w of weeks){
@@ -1972,11 +1976,20 @@ async function ingest(objs){
             questions:(o.questions||[]).map(q=>({ n:q.n, answer:q.answer??q.correct, los:(q.los||q.learningObjectives||q.lo||[]).map(String), topic:q.topic||null, explanation:q.explanation||q.rationale||'' })) };
           addedKey++;
         }
+      } else if(type==='pdf_index'){
+        // the question map for a paper, already parsed — the PDF itself is only
+        // needed to look at the page, and is fetched on demand
+        if(o.pdf && Array.isArray(o.index) && o.index.length){
+          const prev=S.pdfExams[o.pdf];
+          S.pdfExams[o.pdf]={ pdf:o.pdf, numPages:o.numPages||(o.pageHeights||[]).length||(prev&&prev.numPages)||1,
+            pageHeights:o.pageHeights||(prev&&prev.pageHeights)||[], index:o.index, count:o.index.length };
+          addedIdx++;
+        }
       }
     }
   }
   save();
-  return {addedLO, addedQ, addedExam, addedKey};
+  return {addedLO, addedQ, addedExam, addedKey, addedIdx};
 }
 async function importFiles(files, opts){
   const objs=[], pdfs=[];
@@ -3417,12 +3430,31 @@ function splitState(st){
 }
 /* Only ever stop carrying the library once we've confirmed the repo holds it —
    otherwise stripping it would be data loss for a device that can't rebuild.  */
+function unpublishedIndexes(){
+  const names = sync.libFiles || [];
+  return Object.keys(S.pdfExams||{}).filter(pdf=>!names.includes(pdf+'.index.json'));
+}
 function libraryProven(){
   if(S.settings.syncLibrary===false) return;
+  // a paper whose index is not in the repo can only be rebuilt from the PDF, so
+  // stripping it would leave other devices without those questions
+  if(unpublishedIndexes().length) return;
   S.settings.syncLibrary = false;
   sync.lastPushed='';
   save();
   toast('Progress files are now personal-only — objectives and papers load from the repo.');
+}
+/* Keeps every device on the same bank without costing much: a directory listing
+   plus downloads only for files whose SHA changed. PDFs are skipped — their
+   question maps arrive as small index files, and the page images load on demand. */
+async function autoLibrary(force){
+  if(!libReady()) return;
+  try{
+    const last = (await DB.get('libCheckedAt')) || 0;
+    if(!force && Date.now()-last < 6*3600000) return;      // at most four checks a day
+    await DB.set('libCheckedAt', Date.now());
+    await importFromRepo({quiet:true, jsonOnly:true});
+  }catch(_){}
 }
 function libraryIsEmpty(){
   return !Object.keys(S.los).length && !Object.keys(S.questions).length;
@@ -3985,9 +4017,7 @@ async function syncInit(){
   if(workerUrl() && loginName && wkSess){ sync.kind='worker'; }
   if(loginRequired() && !loginName){ showLock(); return; }   // nothing syncs until they are in
   if(loginName) hideLock();                                  // a stored login opens straight up
-  if(loginName && sync.kind==='github') setTimeout(()=>{
-    if(libraryIsEmpty()) importFromRepo({quiet:true}).catch(()=>{});
-  }, 1200);
+  if(loginName) setTimeout(()=>autoLibrary(false), 1500);
   let justSignedIn = false;
   try{ justSignedIn = await msHandleRedirect(); }catch(_){}   // returning from Microsoft
   const wanted = await DB.get('syncOn');
@@ -4305,14 +4335,16 @@ async function importFromRepo(opts){
   const say = m => { if(st) st.innerHTML = m; };
   try{
     say('<span class="hint">Reading the repo…</span>');
-    const found = await backend().listLib();
+    let found = await backend().listLib();
     if(!found.length){
       say(`<span class="hint">Nothing to import at <b class="mono">${esc(ghDataDir()||'the repo root')}</b>. Upload your objective files, marking keys and PDFs there.</span>`);
       if(!quiet) toast('No .json or .pdf files found in that folder.', true);
       return {added:0};
     }
+    sync.libFiles = found.map(f=>f.name);              // remembered for the publish check
     const seen = await libSeenGet();
     const force = opts && opts.force;
+    if(opts && opts.jsonOnly) found = found.filter(f=>!/\.pdf$/i.test(f.name));
     const todo = found.filter(f=>{
       if(force) return true;
       const isPdf = /\.pdf$/i.test(f.name);
@@ -4348,6 +4380,38 @@ async function importFromRepo(opts){
     return null;
   }
 }
+/* Developer step: push each parsed paper index into the library as a small JSON
+   file. Everyone else then gets the full question bank from a few KB, and only
+   downloads a PDF when they actually want to look at the page.                 */
+async function publishIndexes(onProgress){
+  const dir = ghDataDir();
+  const papers = Object.values(S.pdfExams||{});
+  if(!papers.length) return {done:0, msg:'No parsed papers on this device yet.'};
+  let done=0, skipped=0;
+  for(const ex of papers){
+    const path = (dir? dir+'/':'')+'index/'+ex.pdf+'.index.json';
+    const body = { type:'medvault_pdf_index', pdf:ex.pdf, numPages:ex.numPages,
+                   pageHeights:ex.pageHeights, count:ex.count, index:ex.index };
+    const text = JSON.stringify(body);
+    if(onProgress) onProgress(ex.pdf);
+    const cur = await ghApi('GET', ghFileUrl(false, path));
+    let sha=null;
+    if(cur!==404 && typeof cur!=='number'){
+      if(b64ToUtf8(cur.content||'')===text){ skipped++; continue; }   // unchanged
+      sha = cur.sha;
+    }
+    const put = { message:'MedVault · publish index for '+ex.pdf, content:utf8ToB64(text),
+                  branch:S.settings.ghBranch||undefined };
+    if(sha) put.sha = sha;
+    const res = await ghApi('PUT', ghFileUrl(true, path), JSON.stringify(put));
+    if(typeof res==='number') throw new Error('failed on '+ex.pdf+' ('+res+')');
+    done++;
+  }
+  sync.libFiles = (sync.libFiles||[]).concat(papers.map(p=>p.pdf+'.index.json'));
+  return {done, skipped, msg: done? `Published ${done} index${done===1?'':'es'}${skipped?', '+skipped+' already current':''}.`
+                                  : `All ${skipped} index${skipped===1?'':'es'} already current.`};
+}
+
 /* Called when a PDF paper is opened but its bytes never made it to this device. */
 async function fetchPdfFromRepo(pdfId){
   if(!libReady()) return false;
@@ -4380,10 +4444,16 @@ function drawRepoCard(){
       </div>
     </div>
     <div id="repoStatus" style="margin-top:12px"></div>
+    ${isDev()? `<div class="divider"></div>
+      <div class="eyebrow" style="margin-bottom:8px">Publish for everyone</div>
+      <p class="hint" style="margin:0 0 10px">Turns each paper you've parsed here into a small index file in the library, so every login gets the full question bank without downloading any PDFs.</p>
+      <div class="btnrow"><button class="btn" id="pubIdx">Publish paper indexes</button>
+        <span class="eyebrow" id="pubMsg">${unpublishedIndexes().length? unpublishedIndexes().length+' not published yet' : ''}</span></div>`:''}
     <div class="divider"></div>
     <div class="eyebrow">On this device</div>
-    <p class="hint" style="margin:6px 0 0">${Object.keys(S.los).length} objectives · ${Object.keys(S.questions).length} questions · ${pdfN} PDF paper${pdfN===1?'':'s'} indexed${keyN?' · '+keyN+' marking key'+(keyN===1?'':'s'):''}.
-      ${pdfN? 'Opening a paper whose file is missing here pulls it from the repo automatically.':''}</p>`;
+    <p class="hint" style="margin:6px 0 0">${Object.keys(S.los).length} objectives · ${Object.keys(S.questions).length} questions · ${pdfN} paper${pdfN===1?'':'s'} indexed${keyN?' · '+keyN+' marking key'+(keyN===1?'':'s'):''}.
+      ${pdfN? 'Opening a paper whose PDF is missing here pulls it from the repo automatically.':''}
+      Objectives, keys and paper indexes refresh by themselves when you open MedVault.</p>`;
   const dp=$('#ghDataPath');
   if(dp) dp.onchange=e=>{ S.settings.ghDataPath=e.target.value.trim().replace(/^\/+|\/+$/g,''); save(); };
   $('#repoImport').onclick=async()=>{
@@ -4392,6 +4462,19 @@ function drawRepoCard(){
     const b=$('#repoImport'); b.disabled=true;
     await importFromRepo({});
     const b2=$('#repoImport'); if(b2) b2.disabled=false;
+  };
+  const pb=$('#pubIdx');
+  if(pb) pb.onclick=async()=>{
+    pb.disabled=true;
+    const m=$('#pubMsg');
+    try{
+      const r=await publishIndexes(name=>{ if(m) m.textContent='publishing '+name+'…'; });
+      if(m) m.textContent=r.msg;
+      toast(r.msg);
+      libraryProven();
+      drawRepoCard();
+    }catch(e){ if(m) m.textContent='Failed — '+(e.message||'error'); }
+    const b2=$('#pubIdx'); if(b2) b2.disabled=false;
   };
   $('#repoForce').onclick=async()=>{
     const b=$('#repoForce'); b.disabled=true;
@@ -4447,6 +4530,7 @@ async function doLogin(word){
     sync.kind = workerUrl()? 'worker' : 'github';
     await DB.set('syncKind', sync.kind);
     await syncEnable(false);
+    await autoLibrary(true);      // everyone with a word gets the same objectives, keys and papers
   }
   renderView(current==='lock'?'dash':current); renderTop();
   return res;
