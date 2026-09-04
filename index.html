@@ -247,6 +247,24 @@ label.fld > span{display:block;font-family:var(--mono);font-size:10.5px;letter-s
   body{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
 }
 
+/* ---------- login gate ---------- */
+body.locked{overflow:hidden}
+body.locked .app,body.locked .tabbar{filter:blur(3px);pointer-events:none;user-select:none}
+.lockscreen{position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;
+  padding:24px;background:rgba(6,10,14,.86);backdrop-filter:blur(10px)}
+.lockcard{width:100%;max-width:330px;text-align:center;padding:30px 24px 26px;border:1px solid var(--line);
+  border-radius:18px;background:var(--panel);box-shadow:0 30px 80px -30px rgba(0,0,0,.9)}
+.lockcard h1{font-size:20px;margin:14px 0 6px;letter-spacing:.01em}
+.lockcard p{color:var(--muted);font-size:13.5px;margin:0 0 18px;line-height:1.5}
+.lockcard input{width:100%;text-align:center;font-family:var(--mono);font-size:16px;letter-spacing:.06em;padding:13px}
+.lockcard .btn{width:100%;justify-content:center;margin-top:11px;padding:12px}
+.lockmsg{margin-top:13px;font-size:12.5px;color:var(--amber);min-height:17px;line-height:1.45}
+.acctrow{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.acctname{font-family:var(--mono);font-size:14px;color:var(--teal)}
+.devtag{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:5px;
+  background:rgba(155,140,240,.14);border:1px solid rgba(155,140,240,.4);color:#B9AEF5}
+.loginlist{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+
 /* ---------- sync ---------- */
 .syncdot{display:inline-block;width:7px;height:7px;border-radius:50%;flex:0 0 auto;
   box-shadow:0 0 7px currentColor;animation:sfade .2s ease}
@@ -771,6 +789,9 @@ pre.code .k{color:var(--steel)}
       <!-- DATA -->
       <section class="view" id="v-data">
         <div class="section-title"><h2>Data</h2><span class="eyebrow">import · export · sync</span></div>
+        <div class="card" style="margin-bottom:16px"><div class="hd"><span class="t">Account</span><div class="grow"></div>
+          <span class="eyebrow">login word</span></div>
+          <div class="bd" id="acctBox"></div></div>
         <div class="card" style="margin-bottom:16px"><div class="hd"><span class="t">Sync</span><div class="grow"></div>
           <span class="eyebrow">medvault-state.json · multi-device</span></div>
           <div class="bd" id="syncBox"></div></div>
@@ -901,7 +922,8 @@ const DEFAULT = ()=>({
   version:3,
   settings:{ assessments:[], halfLifeDays:14, targetReps:4, recentWindow:10,
              dailyTargetMin:90, weeklyTargetMin:600, autoLogQuestions:true, maxSecsPerQ:300,
-             targetScore:85, ghRepo:'', ghPath:'medvault-state.json', ghBranch:'', ghDataPath:'data' },
+             targetScore:85, ghRepo:'', ghPath:'medvault-state.json', ghBranch:'', ghDataPath:'data',
+             gateLogin:false, devLogin:'zacd', syncEveryMin:0, syncPushDelaySec:30, workerUrl:'' },
   planner:{ currency:'$', dayStart:5, dayEnd:23 },
   los:{}, exams:{}, questions:{}, attempts:[], snapshots:[], events:[],
   sessions:[], todos:[], timer:{running:false, startTs:null, elapsed:0, los:[], kind:'reading'},
@@ -1827,7 +1849,7 @@ function drawProgTable(sortBy){
    ============================================================ */
 function renderData(){
   renderTop();
-  drawSyncCard(); drawRepoCard(); drawInstallHint(); refreshMsSignedIn();
+  drawAcctCard(); drawSyncCard(); drawRepoCard(); drawInstallHint(); refreshMsSignedIn();
   $('#schemaLO').innerHTML = hl(SCHEMA_LO);
   $('#schemaExam').innerHTML = hl(SCHEMA_EXAM);
   $('#schemaPdfKey').innerHTML = hl(SCHEMA_PDFKEY);
@@ -3344,7 +3366,29 @@ function drawReasonAnalytics(){
    ============================================================ */
 const SYNC_FILE = 'medvault-state.json';
 const SYNC_FORMAT = 1;
+
+/* ---- deployment config ----
+   Fill these in on the copy you hand to other people. With a repo set, the app
+   asks for a login word on first run and refuses to open without one that has a
+   matching state file in the repo.
+   READ THIS FIRST: a token placed here is visible to anyone who opens the page.
+   See "Handing this to other people" in SETUP.md before you use it.          */
+const DEPLOY = { workerUrl:'', repo:'', token:'', dataPath:'data', devLogin:'zacd' };
+
 let deviceId = null;
+let loginName = null;        // the secret word this device signed in with
+let knownLogins = [];        // words verified on this device before — lets them work offline
+const normLogin = w => String(w||'').trim().toLowerCase().replace(/[^a-z0-9_-]/g,'');
+function statePath(){
+  return loginName ? loginName+'-state.json'
+                   : (S.settings.ghPath || SYNC_FILE);
+}
+let isDevFlag = false;
+function isDev(){
+  if(workerUrl()) return !!isDevFlag;                    // the service decides, not the client
+  return !!loginName && loginName === normLogin(S.settings.devLogin || DEPLOY.devLogin || 'zacd');
+}
+function loginRequired(){ return !!(DEPLOY.repo || DEPLOY.workerUrl || S.settings.gateLogin); }
 let sync = { on:false, kind:'folder', file:null, status:'off', msg:'', stamp:'', eTag:'', ghSha:'', lastPushed:'',
              pushT:null, pollT:null, busy:false, lastAt:0, pending:false };
 
@@ -3360,6 +3404,29 @@ const SYNC_ARRAYS = {
   todos:     t => t.id || ('t:'+t.created)
 };
 const SYNC_MAPS = ['los','exams','questions','pdfKeys','pdfExams'];
+/* Everything in LIBRARY_KEYS is rebuilt from the files in the repo library, so
+   once that library exists there is no reason to carry a copy in every person's
+   progress file. Stripping it keeps <word>-state.json to just their own work.  */
+const LIBRARY_KEYS = ['los','exams','questions','pdfKeys','pdfExams'];
+function splitState(st){
+  const personal={}, library={};
+  for(const k of Object.keys(st)){
+    if(LIBRARY_KEYS.includes(k)) library[k]=st[k]; else personal[k]=st[k];
+  }
+  return {personal, library};
+}
+/* Only ever stop carrying the library once we've confirmed the repo holds it —
+   otherwise stripping it would be data loss for a device that can't rebuild.  */
+function libraryProven(){
+  if(S.settings.syncLibrary===false) return;
+  S.settings.syncLibrary = false;
+  sync.lastPushed='';
+  save();
+  toast('Progress files are now personal-only — objectives and papers load from the repo.');
+}
+function libraryIsEmpty(){
+  return !Object.keys(S.los).length && !Object.keys(S.questions).length;
+}
 function itemTime(it){
   return it.updated || it.doneTs || it.ts || it.created ||
          (it.date && !isNaN(new Date(it.date)) ? new Date(it.date).getTime() : 0) || 0;
@@ -3530,9 +3597,103 @@ const ADAPTERS = {
       return { stamp: sync.ghSha };
     },
     disconnect(){ sync.ghSha=''; }
+  },
+
+  worker: {
+    label:'Sync service',
+    note:'Talks to your Cloudflare Worker. No repository token ever reaches this device.',
+    available: ()=> true,
+    ready:     ()=> !!(workerUrl() && wkSess),
+    async connect(interactive){
+      if(!workerUrl()) throw new Error('No sync service URL configured.');
+      if(!wkSess) throw Object.assign(new Error('signin'), {signin:true});
+      return true;
+    },
+    async read(){
+      const r = await wkApi('GET','/state');
+      if(r && r.missing){ sync.ghSha=''; return { text:'', stamp:'', missing:true }; }
+      sync.ghSha = r.stamp||'';
+      if(r.stamp && r.stamp===sync.stamp) return { text:null, stamp:r.stamp };
+      return { text:r.text||'', stamp:r.stamp||'' };
+    },
+    async write(text){
+      try{
+        const r = await wkApi('PUT','/state',{ text, sha: sync.ghSha||undefined });
+        sync.ghSha = r.stamp||'';
+        return { stamp: r.stamp||'' };
+      }catch(e){
+        if(e && e.status===409){ sync.stamp=''; throw Object.assign(new Error('conflict'),{conflict:true}); }
+        throw e;
+      }
+    },
+    disconnect(){ sync.ghSha=''; }
   }
 };
 function adapter(){ return ADAPTERS[sync.kind] || ADAPTERS.folder; }
+
+/* ---- sync service client ----
+   The Worker holds the repository token and derives the file path from the
+   signed session, so a device can only ever reach its own vault.            */
+let wkSess = null;
+function workerUrl(){ return String(S.settings.workerUrl || DEPLOY.workerUrl || '').replace(/\/+$/,''); }
+async function wkApi(method, path, body){
+  const url = workerUrl()+path;
+  const r = await fetch(url, { method,
+    headers:{ ...(wkSess?{Authorization:'Bearer '+wkSess}:{}) , ...(body?{'Content-Type':'application/json'}:{}) },
+    body: body? JSON.stringify(body) : undefined });
+  if(r.status===401){
+    wkSess=null; await DB.set('wkSess', null);
+    throw Object.assign(new Error('signin'), {signin:true, status:401});
+  }
+  let j=null; try{ j = await r.json(); }catch(_){}
+  if(!r.ok) throw Object.assign(new Error((j&&j.error)||('service '+r.status)), {status:r.status});
+  return j||{};
+}
+async function wkBlob(sha){
+  const r = await fetch(workerUrl()+'/blob?sha='+encodeURIComponent(sha),
+    { headers:{ Authorization:'Bearer '+wkSess } });
+  if(!r.ok) throw new Error('blob '+r.status);
+  return r.arrayBuffer();
+}
+
+/* ---- one interface, two ways to reach the data ----
+   With a Worker configured everything routes through it; otherwise the app
+   talks to GitHub directly with a local token.                              */
+const BACKENDS = {
+  worker: {
+    async verify(word){
+      const r = await fetch(workerUrl()+'/login', { method:'POST',
+        headers:{'Content-Type':'application/json'}, body: JSON.stringify({word}) });
+      if(r.status===404) return {ok:false, reason:'unknown'};
+      if(!r.ok) return {ok:false, reason:'unknown'};
+      const j = await r.json();
+      wkSess = j.token; await DB.set('wkSess', j.token);
+      return {ok:true, name:j.word, dev:!!j.dev};
+    },
+    async listLib(){ const r = await wkApi('GET','/lib'); return (r.files)||[]; },
+    getBlob(sha){ return wkBlob(sha); },
+    async createVault(word){
+      try{ await wkApi('POST','/admin/create',{word}); return {ok:true, msg:'Created “'+normLogin(word)+'”. Give them that word.'}; }
+      catch(e){ return {ok:false, msg: e.status===409? '“'+normLogin(word)+'” already exists.'
+                                     : e.status===403? 'Only the developer word can create vaults.'
+                                     : 'Could not create it — '+(e.message||'error')}; }
+    },
+    async listVaults(){ const r = await wkApi('GET','/admin/list'); return r.words||[]; }
+  },
+  github: {
+    async verify(word){
+      const name = normLogin(word);
+      const r = await ghApi('GET', ghFileUrl(false, name+'-state.json'));
+      if(typeof r==='number') return {ok:false, reason:'unknown'};
+      return {ok:true, name, dev: name===normLogin(S.settings.devLogin||DEPLOY.devLogin||'zacd')};
+    },
+    listLib(){ return ghCollect(); },
+    getBlob(sha){ return ghBlob(sha); },
+    createVault(word){ return createLoginDirect(word); },
+    listVaults(){ return listLoginsDirect(); }
+  }
+};
+function backend(){ return workerUrl()? BACKENDS.worker : BACKENDS.github; }
 
 /* ---- GitHub contents API ----
    The blob SHA is both the change stamp and the concurrency token: identical
@@ -3540,8 +3701,8 @@ function adapter(){ return ADAPTERS[sync.kind] || ADAPTERS.folder; }
    and a stale SHA is rejected rather than silently overwriting someone's commit. */
 let ghTok = null;
 const ghBase = ()=> 'https://api.github.com/repos/'+String(S.settings.ghRepo||'').replace(/^\/+|\/+$/g,'');
-function ghFileUrl(forWrite){
-  const path = String(S.settings.ghPath||'').replace(/^\/+/,'');
+function ghFileUrl(forWrite, override){
+  const path = String(override || statePath()).replace(/^\/+/,'');
   const url = ghBase()+'/contents/'+path.split('/').map(encodeURIComponent).join('/');
   const br = S.settings.ghBranch;
   return (!forWrite && br) ? url+'?ref='+encodeURIComponent(br) : url;
@@ -3714,12 +3875,15 @@ async function syncDisable(){
 }
 function syncStartPoll(){
   clearInterval(sync.pollT);
-  sync.pollT = setInterval(()=>{ if(document.visibilityState==='visible') syncPull(); }, 15000);
+  const mins = +S.settings.syncEveryMin || 0;      // 0 = only on open, focus, and Sync now
+  if(!mins) return;
+  sync.pollT = setInterval(()=>{ if(document.visibilityState==='visible') syncPull(); }, mins*60000);
 }
 function syncSchedulePush(){
   if(!sync.on) return;
   clearTimeout(sync.pushT);
-  sync.pushT = setTimeout(()=>syncPush(), 1500);
+  const wait = Math.max(2, +S.settings.syncPushDelaySec || 30) * 1000;
+  sync.pushT = setTimeout(()=>syncPush(), wait);   // batches a study session into one write
 }
 async function syncPush(force){
   if(!sync.on) return;
@@ -3727,10 +3891,13 @@ async function syncPush(force){
   sync.busy=true;
   try{
     try{ await pullInner(false); }catch(_){}   // never overwrite a write we haven't seen
-    const stateJson = JSON.stringify(S);
+    const {personal, library} = splitState(S);
+    const carryLib = S.settings.syncLibrary !== false;
+    const stateJson = JSON.stringify(carryLib ? S : personal);
     if(!force && stateJson===sync.lastPushed){ sync.busy=false; return; }  // nothing actually changed
-    const payload = JSON.stringify({ app:'medvault', format:SYNC_FORMAT,
-      savedAt:new Date().toISOString(), savedBy:deviceId, rev:S.meta.rev, state:S });
+    const payload = JSON.stringify(Object.assign(
+      { app:'medvault', format:SYNC_FORMAT, savedAt:new Date().toISOString(), savedBy:deviceId, rev:S.meta.rev },
+      carryLib ? {state:S} : {state:personal, library:'repo'}));
     syncSet('work','saving…');
     const res = await adapter().write(payload);
     sync.lastPushed = stateJson;
@@ -3779,7 +3946,10 @@ async function pullInner(force){
     sync.lastAt=Date.now(); syncSet('ok', syncWhen()); return false;
   }
   const before = JSON.stringify(S);
-  const merged = mergeStates(S, j.state);
+  // library:'repo' means the sender left the derived data out — keep ours untouched
+  const remote = Object.assign({}, j.state);
+  for(const k of LIBRARY_KEYS) if(!(k in remote)) remote[k] = S[k];
+  const merged = mergeStates(S, remote);
   if(before===JSON.stringify(Object.assign({}, merged, {meta:S.meta}))){
     sync.lastAt=Date.now(); syncSet('ok', syncWhen()); return false;   // nothing new for us
   }
@@ -3795,6 +3965,13 @@ async function refreshMsSignedIn(){
   try{ sync.msSignedIn = !!(await DB.get('msTok')); }catch(_){ sync.msSignedIn=false; }
   const box=$('#syncBox'); if(box && current==='data') drawSyncCard();
 }
+async function applyDeployConfig(){
+  if(DEPLOY.workerUrl && !S.settings.workerUrl){ S.settings.workerUrl = DEPLOY.workerUrl; S.settings.gateLogin = true; }
+  if(DEPLOY.repo && !S.settings.ghRepo){ S.settings.ghRepo = DEPLOY.repo; S.settings.gateLogin = true; }
+  if(DEPLOY.dataPath && !S.settings.ghDataPath) S.settings.ghDataPath = DEPLOY.dataPath;
+  if(DEPLOY.devLogin) S.settings.devLogin = S.settings.devLogin || DEPLOY.devLogin;
+  if(DEPLOY.token && !(await DB.get('ghTok'))){ ghTok = DEPLOY.token; await DB.set('ghTok', DEPLOY.token); }
+}
 async function syncInit(){
   deviceId = await DB.get('deviceId');
   if(!deviceId){ deviceId = 'dev_'+Math.random().toString(36).slice(2,8); await DB.set('deviceId', deviceId); }
@@ -3802,6 +3979,15 @@ async function syncInit(){
   sync.msSignedIn = !!(await DB.get('msTok'));
   ghTok = (await DB.get('ghTok')) || null;
   libSeen = (await DB.get('libSeen')) || {};
+  wkSess = (await DB.get('wkSess')) || null;
+  await loginInit();
+  await applyDeployConfig();
+  if(workerUrl() && loginName && wkSess){ sync.kind='worker'; }
+  if(loginRequired() && !loginName){ showLock(); return; }   // nothing syncs until they are in
+  if(loginName) hideLock();                                  // a stored login opens straight up
+  if(loginName && sync.kind==='github') setTimeout(()=>{
+    if(libraryIsEmpty()) importFromRepo({quiet:true}).catch(()=>{});
+  }, 1200);
   let justSignedIn = false;
   try{ justSignedIn = await msHandleRedirect(); }catch(_){}   // returning from Microsoft
   const wanted = await DB.get('syncOn');
@@ -3848,11 +4034,24 @@ function drawSyncCard(){
     <div class="eyebrow" style="margin-bottom:8px">Transport</div>
     <div class="pills" id="syncKindPills">
       <div class="pill ${sync.kind==='folder'?'on':''}" data-k="folder" ${folderOk?'':'style="opacity:.45"'}>Data folder</div>
+      <div class="pill ${sync.kind==='worker'?'on':''}" data-k="worker">Sync service</div>
       <div class="pill ${sync.kind==='github'?'on':''}" data-k="github">GitHub</div>
       <div class="pill ${sync.kind==='onedrive'?'on':''}" data-k="onedrive">OneDrive</div>
     </div>
 
-    <div id="syncCfg" style="margin-top:14px"></div>`;
+    <div id="syncCfg" style="margin-top:14px"></div>
+    <div class="divider"></div>
+    <div class="eyebrow" style="margin-bottom:8px">How often to check the cloud</div>
+    <div class="pills" id="syncFreq">
+      ${[[0,'On open only'],[15,'Every 15 min'],[60,'Hourly']].map(([v,l])=>
+        `<div class="pill ${(+S.settings.syncEveryMin||0)===v?'on':''}" data-f="${v}">${l}</div>`).join('')}
+    </div>
+    <div class="divider"></div>
+    <div class="eyebrow" style="margin-bottom:8px">What the file holds</div>
+    <label class="chkline"><input type="checkbox" id="syncLib" ${S.settings.syncLibrary!==false?'checked':''}>
+      <span>Also carry objectives, questions and paper indexes</span></label>
+    <p class="hint" style="margin:8px 0 0" id="syncSizeNote"></p>
+    <p class="hint" style="margin:9px 0 0">MedVault always syncs when you open it and when you tap <b>Sync now</b>. Saves are batched and written about ${Math.round((+S.settings.syncPushDelaySec||30))}s after you stop, so a study session costs a couple of requests rather than dozens.</p>`;
 
   const cfg=$('#syncCfg');
   if(sync.kind==='folder'){
@@ -3863,6 +4062,30 @@ function drawSyncCard(){
          <button class="btn" onclick='connectFolder()'>Connect folder</button>`
       : `<p class="hint" style="margin:0 0 12px">Writing to <b class="mono">${esc(dirHandle.name)}/${SYNC_FILE}</b>.</p>
          ${sync.on?'':`<button class="btn primary" id="syncOnBtn">Turn on sync</button>`}`;
+  } else if(sync.kind==='worker'){
+    cfg.innerHTML = `
+      <label class="fld" style="margin:0;max-width:460px"><span>Sync service URL</span>
+        <input type="text" id="wkUrl" placeholder="https://medvault-sync.you.workers.dev" value="${esc(S.settings.workerUrl||'')}">
+        <div class="hint">Your Cloudflare Worker. It holds the repository token — this device never sees it.</div></label>
+      <div class="btnrow" style="margin-top:12px">
+        ${sync.on? '' : `<button class="btn primary" id="syncOnBtn">Turn on sync</button>`}
+        <button class="btn sm ghost" id="wkPing">Test connection</button>
+      </div>
+      <div class="hint" id="wkMsg" style="margin-top:10px"></div>
+      <p class="hint" style="margin:12px 0 0">${wkSess? 'Signed in as <b class="mono">'+esc(loginName||'?')+'</b>. The service only lets this session touch its own vault.'
+        : 'Sign in with your login word to start syncing.'}</p>`;
+    const u=$('#wkUrl');
+    if(u) u.onchange=e=>{ S.settings.workerUrl=e.target.value.trim().replace(/\/+$/,''); save(); };
+    const ping=$('#wkPing');
+    if(ping) ping.onclick=async()=>{
+      const el=$('#wkMsg'); el.textContent='Checking…';
+      try{
+        const r = await fetch(workerUrl()+'/health');
+        const j = await r.json();
+        el.innerHTML = j && j.ok? '<span style="color:var(--teal)">Service reachable.</span>'
+                                : '<span style="color:var(--amber)">Reached it, but it did not answer as expected.</span>';
+      }catch(e){ el.innerHTML='<span style="color:var(--red)">Could not reach it — check the URL and the Worker\'s allowed origin.</span>'; }
+    };
   } else if(sync.kind==='github'){
     const hasTok = !!ghTok;
     cfg.innerHTML = `
@@ -3921,6 +4144,25 @@ function drawSyncCard(){
     if(out) out.onclick=async()=>{ await DB.set('msTok',null); sync.msSignedIn=false; await syncDisable(); toast('Signed out of OneDrive.'); };
   }
 
+  const sl=$('#syncLib');
+  if(sl) sl.onchange=e=>{ S.settings.syncLibrary=e.target.checked; sync.lastPushed=''; save(); drawSyncCard(); };
+  const note=$('#syncSizeNote');
+  if(note){
+    try{
+      const {personal} = splitState(S);
+      const pk = Math.round(JSON.stringify(personal).length/1024);
+      const fk = Math.round(JSON.stringify(S).length/1024);
+      note.innerHTML = S.settings.syncLibrary!==false
+        ? `Currently <b>${fk} KB</b> per save. Import the repo library and this drops to about <b>${pk} KB</b> — objectives and papers come from <b class="mono">${esc(S.settings.ghDataPath||'data')}/</b> instead of being copied into everyone's file.`
+        : `Your file is <b>${pk} KB</b> of your own work — attempts, study log, tasks, planner and settings. Objectives, questions and paper indexes load from <b class="mono">${esc(S.settings.ghDataPath||'data')}/</b>. Turn this on only if your library is not in the repo.`;
+    }catch(_){}
+  }
+  $$('#syncFreq .pill').forEach(p=>p.onclick=()=>{
+    S.settings.syncEveryMin=+p.dataset.f; save();
+    $$('#syncFreq .pill').forEach(x=>x.classList.remove('on')); p.classList.add('on');
+    if(sync.on) syncStartPoll();
+    toast(+p.dataset.f? 'Checking every '+p.dataset.f+' minutes.' : 'Checking on open and on demand only.');
+  });
   $$('#syncKindPills .pill').forEach(p=>p.onclick=async()=>{
     if(p.dataset.k===sync.kind) return;
     if(sync.on) await syncDisable();
@@ -4041,10 +4283,10 @@ async function ghCollect(){
       for(const c of await ghListDir((dir? dir+'/':'')+e.name)) if(c.type==='file') out.push(c);
     }
   }
-  const statePath = String(S.settings.ghPath||SYNC_FILE).replace(/^\/+/,'');
   return out.filter(f=>
     /\.(json|pdf)$/i.test(f.name) &&
-    f.path !== statePath &&                        // never re-import our own state file
+    !/-state\.json$/i.test(f.name) &&              // nobody's progress file is library material
+    f.name !== SYNC_FILE &&
     !/backup/i.test(f.name));
 }
 function havePdf(name){ return !!S.pdfExams[name]; }
@@ -4055,14 +4297,15 @@ function havePdf(name){ return !!S.pdfExams[name]; }
 let libSeen = null;
 async function libSeenGet(){ if(!libSeen) libSeen = (await DB.get('libSeen')) || {}; return libSeen; }
 
+function libReady(){ return workerUrl()? !!wkSess : ADAPTERS.github.ready(); }
 async function importFromRepo(opts){
   const quiet = opts && opts.quiet;
-  if(!ADAPTERS.github.ready()){ if(!quiet) toast('Set up GitHub sync first.', true); return null; }
+  if(!libReady()){ if(!quiet) toast('Sign in first.', true); return null; }
   const st = $('#repoStatus');
   const say = m => { if(st) st.innerHTML = m; };
   try{
     say('<span class="hint">Reading the repo…</span>');
-    const found = await ghCollect();
+    const found = await backend().listLib();
     if(!found.length){
       say(`<span class="hint">Nothing to import at <b class="mono">${esc(ghDataDir()||'the repo root')}</b>. Upload your objective files, marking keys and PDFs there.</span>`);
       if(!quiet) toast('No .json or .pdf files found in that folder.', true);
@@ -4077,6 +4320,7 @@ async function importFromRepo(opts){
       return true;
     });
     if(!todo.length){
+      libraryProven();                                 // the repo can rebuild it, so stop syncing it
       say(`<span class="hint"><span style="color:var(--teal)">✓</span> Up to date — all ${found.length} library file${found.length===1?'':'s'} already on this device.</span>`);
       if(!quiet) toast('Already up to date.');
       return {added:0};
@@ -4085,13 +4329,14 @@ async function importFromRepo(opts){
     for(let i=0;i<todo.length;i++){
       const f=todo[i];
       say(`<span class="hint">Downloading ${i+1} of ${todo.length} — <b class="mono">${esc(f.name)}</b>…</span>`);
-      const buf = await ghBlob(f.sha);
+      const buf = await backend().getBlob(f.sha);
       files.push(new File([buf], f.name, {type: /\.pdf$/i.test(f.name)?'application/pdf':'application/json'}));
     }
     say(`<span class="hint">Importing ${files.length} file${files.length===1?'':'s'}…</span>`);
     await importFiles(files);
     for(const f of todo) seen[f.path]=f.sha;          // only after a clean import
     await DB.set('libSeen', seen);
+    libraryProven();
     drawRepoCard();
     const st2=$('#repoStatus');
     if(st2) st2.innerHTML = `<span class="hint"><span style="color:var(--teal)">✓</span> Imported ${files.length} file${files.length===1?'':'s'} from the repo.</span>`;
@@ -4105,12 +4350,12 @@ async function importFromRepo(opts){
 }
 /* Called when a PDF paper is opened but its bytes never made it to this device. */
 async function fetchPdfFromRepo(pdfId){
-  if(!ADAPTERS.github.ready()) return false;
-  const found = await ghCollect();
+  if(!libReady()) return false;
+  const found = await backend().listLib();
   const hit = found.find(f=>f.name===pdfId);
   if(!hit) return false;
-  toast('Fetching '+pdfId+' from the repo…');
-  const buf = await ghBlob(hit.sha);
+  toast('Fetching '+pdfId+'…');
+  const buf = await backend().getBlob(hit.sha);
   await importFiles([new File([buf], pdfId, {type:'application/pdf'})], {noRender:true});
   const seen = await libSeenGet(); seen[hit.path]=hit.sha; await DB.set('libSeen', seen);
   return true;
@@ -4153,6 +4398,212 @@ function drawRepoCard(){
     await importFromRepo({force:true});
     const b2=$('#repoForce'); if(b2) b2.disabled=false;
   };
+}
+
+/* ============================================================
+   LOGIN WORDS
+   Each word maps to its own <word>-state.json in the repo. The word is a roster
+   key, not a password: it decides which file you read and write, and the app
+   refuses to open on a word with no file. Anyone holding the repo token can
+   reach any file regardless — see SETUP.md.
+   ============================================================ */
+async function loginInit(){
+  loginName  = (await DB.get('login')) || null;
+  knownLogins = (await DB.get('knownLogins')) || [];
+  isDevFlag  = !!(await DB.get('isDev'));
+}
+async function rememberLogin(name, dev){
+  loginName = name;
+  if(dev!==undefined){ isDevFlag = !!dev; await DB.set('isDev', isDevFlag); }
+  if(!knownLogins.includes(name)) knownLogins.push(name);
+  await DB.set('login', name);
+  await DB.set('knownLogins', knownLogins);
+}
+/* Returns {ok} | {ok:false, reason} — 'unknown' | 'offline' | 'config' */
+async function verifyLogin(word){
+  const name = normLogin(word);
+  if(!name) return {ok:false, reason:'empty'};
+  if(!workerUrl() && (!S.settings.ghRepo || !ghTok)) return {ok:false, reason:'config'};
+  try{
+    const r = await backend().verify(name);
+    if(!r.ok) return r;
+    return {ok:true, name:r.name||name, dev:!!r.dev, offline:false};
+  }catch(e){
+    // no network: a word this device has used before still opens, so a flat
+    // battery on the train doesn't lock you out of your own revision
+    if(knownLogins.includes(name)) return {ok:true, name, offline:true};
+    return {ok:false, reason:'offline'};
+  }
+}
+async function doLogin(word){
+  const res = await verifyLogin(word);
+  if(!res.ok) return res;
+  const changing = loginName && loginName!==res.name;
+  if(changing) resetForNewUser();          // never leak one person's data into another's session
+  await rememberLogin(res.name, res.dev);
+  sync.stamp=''; sync.ghSha=''; sync.lastPushed='';
+  hideLock();
+  if(!res.offline){
+    sync.kind = workerUrl()? 'worker' : 'github';
+    await DB.set('syncKind', sync.kind);
+    await syncEnable(false);
+  }
+  renderView(current==='lock'?'dash':current); renderTop();
+  return res;
+}
+function resetForNewUser(){
+  const keep = { ghRepo:S.settings.ghRepo, ghBranch:S.settings.ghBranch, ghDataPath:S.settings.ghDataPath,
+                 gateLogin:S.settings.gateLogin, devLogin:S.settings.devLogin,
+                 syncEveryMin:S.settings.syncEveryMin, syncPushDelaySec:S.settings.syncPushDelaySec };
+  S = DEFAULT();
+  Object.assign(S.settings, keep);
+  invalidateQIndex();
+  DB.set('state', S);
+}
+async function doLogout(){
+  await syncDisable();
+  loginName = null; wkSess = null; isDevFlag = false;
+  await DB.set('login', null); await DB.set('wkSess', null); await DB.set('isDev', false);
+  resetForNewUser();
+  showLock();
+  toast('Signed out. Your data stays in the repo.');
+}
+
+/* ---- the gate ---- */
+function showLock(msg){
+  let el = $('#lockScreen');
+  if(!el){
+    el = document.createElement('div');
+    el.id='lockScreen'; el.className='lockscreen';
+    document.body.appendChild(el);
+  }
+  el.innerHTML = `
+    <div class="lockcard">
+      <svg class="mark" viewBox="0 0 48 48" fill="none" style="width:52px;height:52px">
+        <rect x="4" y="4" width="40" height="40" rx="11" fill="#0E1922" stroke="#1E2C39"/>
+        <path d="M24 15v18M15 24h18" stroke="#2CD0BF" stroke-width="3.4" stroke-linecap="round"/>
+      </svg>
+      <h1>MedVault</h1>
+      <p>Enter your login word to open your vault.</p>
+      <input type="text" id="lockWord" placeholder="login word" autocomplete="off"
+        autocapitalize="off" autocorrect="off" spellcheck="false">
+      <button class="btn primary" id="lockGo">Open</button>
+      <div class="lockmsg" id="lockMsg">${msg?esc(msg):''}</div>
+    </div>`;
+  document.body.classList.add('locked');
+  const go = async()=>{
+    const b=$('#lockGo'), inp=$('#lockWord');
+    const word=inp.value;
+    if(!normLogin(word)){ $('#lockMsg').textContent='Type your word first.'; return; }
+    b.disabled=true; $('#lockMsg').textContent='Checking…';
+    const res = await doLogin(word);
+    if(!res.ok){
+      b.disabled=false;
+      $('#lockMsg').textContent =
+        res.reason==='unknown' ? 'That word has no vault. Check the spelling, or ask for a new one.' :
+        res.reason==='offline' ? 'No connection, and this word has not been used on this device before.' :
+        res.reason==='config'  ? 'This copy has no repository configured yet.' : 'Try again.';
+    } else if(res.offline){ toast('Opened offline — will sync when you are back online.'); }
+  };
+  $('#lockGo').onclick=go;
+  $('#lockWord').onkeydown=e=>{ if(e.key==='Enter') go(); };
+  setTimeout(()=>{ const i=$('#lockWord'); if(i) i.focus(); }, 60);
+}
+function hideLock(){
+  const el=$('#lockScreen'); if(el) el.remove();
+  document.body.classList.remove('locked');
+}
+
+/* ---- developer: mint new login words ---- */
+async function listLoginsDirect(){
+  const r = await ghApi('GET', ghDirUrl(''));
+  if(typeof r==='number' || !Array.isArray(r)) return [];
+  return r.filter(f=>f.type==='file' && /-state\.json$/i.test(f.name))
+          .map(f=>f.name.replace(/-state\.json$/i,''));
+}
+async function createLoginDirect(word){
+  const name = normLogin(word);
+  if(!name) return {ok:false, msg:'Pick a word first.'};
+  const path = name+'-state.json';
+  const probe = await ghApi('GET', ghFileUrl(false, path));
+  if(probe!==404) return {ok:false, msg:'“'+name+'” already exists.'};
+  const blank = DEFAULT();
+  blank.settings.ghRepo    = S.settings.ghRepo;
+  blank.settings.ghDataPath= S.settings.ghDataPath;
+  blank.settings.ghBranch  = S.settings.ghBranch;
+  blank.settings.gateLogin = true;
+  const payload = JSON.stringify({ app:'medvault', format:SYNC_FORMAT, savedAt:new Date().toISOString(),
+    savedBy:deviceId, rev:0, state:blank });
+  const body = { message:'MedVault · create vault for '+name, content:utf8ToB64(payload),
+                 branch:S.settings.ghBranch||undefined };
+  const res = await ghApi('PUT', ghFileUrl(true, path), JSON.stringify(body));
+  if(typeof res==='number') return {ok:false, msg:'Could not create it ('+res+').'};
+  return {ok:true, msg:'Created “'+name+'”. Give them that word.'};
+}
+const createLogin = word => backend().createVault(word);
+const listLogins  = ()   => backend().listVaults();
+
+function drawAcctCard(){
+  const box=$('#acctBox'); if(!box) return;
+  if(!loginName){
+    box.innerHTML = `<p class="hint" style="margin:0 0 12px">This copy is not using login words — everything is stored on this device and, if sync is on, in <b class="mono">${esc(statePath())}</b>.</p>
+      <label class="chkline"><input type="checkbox" id="gateOn" ${S.settings.gateLogin?'checked':''}><span>Ask for a login word on this device</span></label>`;
+    const g=$('#gateOn');
+    if(g) g.onchange=e=>{
+      S.settings.gateLogin=e.target.checked; save();
+      if(e.target.checked && !loginName) showLock('Pick the word this device should use.');
+    };
+    return;
+  }
+  box.innerHTML = `
+    <div class="acctrow">
+      <div style="flex:1;min-width:0">
+        <div class="acctname">${esc(loginName)}${isDev()?' <span class="devtag">developer</span>':''}</div>
+        <div class="sub" style="color:var(--muted-2);font-size:12px;margin-top:4px">
+          Writing to <b class="mono">${esc(statePath())}</b>${knownLogins.length>1? ' · '+knownLogins.length+' words used on this device':''}</div>
+      </div>
+      <button class="btn sm ghost" id="acctOut">Sign out</button>
+    </div>
+    ${isDev()? `
+      <div class="divider"></div>
+      <div class="eyebrow" style="margin-bottom:9px">Create a login word</div>
+      <div class="btnrow" style="gap:9px">
+        <input type="text" id="newLogin" placeholder="e.g. bluewhale" style="max-width:230px"
+          autocomplete="off" autocapitalize="off" spellcheck="false">
+        <button class="btn primary" id="mkLogin">Create vault</button>
+        <button class="btn sm ghost" id="lsLogin">List existing</button>
+      </div>
+      <div id="loginMsg" class="hint" style="margin-top:10px"></div>
+      <p class="hint" style="margin:12px 0 0">Creates a blank <b class="mono">word-state.json</b> in the repo. Give someone that word and they get their own progress, sharing your objectives and papers. Anyone with the repo token can still read every vault — the word decides whose file you use, it is not a password.</p>`
+      : ''}`;
+  $('#acctOut').onclick=async()=>{
+    modal(confirmCard('Sign out of “'+loginName+'”?',
+      'Your progress stays in the repo and comes back when you sign in again. This device will be cleared.',
+      'Sign out', async()=>{ closeModal(); await doLogout(); }));
+  };
+  if(isDev()){
+    const msg=m=>{ const el=$('#loginMsg'); if(el) el.innerHTML=m; };
+    $('#mkLogin').onclick=async()=>{
+      const inp=$('#newLogin'), b=$('#mkLogin');
+      if(!normLogin(inp.value)){ msg('Type a word first.'); return; }
+      b.disabled=true; msg('Creating…');
+      try{
+        const r=await createLogin(inp.value);
+        msg(`<span style="color:${r.ok?'var(--teal)':'var(--amber)'}">${esc(r.msg)}</span>`);
+        if(r.ok){ inp.value=''; toast('Vault created.'); }
+      }catch(e){ msg('<span style="color:var(--red)">Failed — '+esc(e.message||'error')+'</span>'); }
+      b.disabled=false;
+    };
+    $('#lsLogin').onclick=async()=>{
+      msg('Reading the repo…');
+      try{
+        const list=await listLogins();
+        msg(list.length
+          ? `${list.length} vault${list.length===1?'':'s'}: <span class="loginlist">${list.map(n=>`<span class="mini-tag">${esc(n)}</span>`).join('')}</span>`
+          : 'No vaults yet.');
+      }catch(e){ msg('<span style="color:var(--red)">Could not list them.</span>'); }
+    };
+  }
 }
 
 /* ---------- toast / modal ---------- */
@@ -4243,10 +4694,12 @@ function wire(){
     try{ const p=await dirHandle.queryPermission({mode:'readwrite'}); if(p==='granted') scanFolder(); }catch(_){}
   }
   // catch up whenever the tab comes back, and flush before it goes away
-  window.addEventListener('focus', ()=>{ if(sync.on) syncPull(); });
+  window.addEventListener('focus', ()=>{
+    if(sync.on && Date.now()-sync.lastAt > 5*60000) syncPull();   // not on every tab switch
+  });
   document.addEventListener('visibilitychange', ()=>{
     if(!sync.on) return;
-    if(document.visibilityState==='visible') syncPull();
+    if(document.visibilityState==='visible'){ if(Date.now()-sync.lastAt > 5*60000) syncPull(); }
     else { clearTimeout(sync.pushT); syncPush(); }   // flush now rather than after the debounce
   });
   window.addEventListener('beforeunload', ()=>{ if(sync.on){ clearTimeout(sync.pushT); syncPush(); } });
