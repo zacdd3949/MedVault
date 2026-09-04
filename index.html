@@ -1034,6 +1034,10 @@ pre.code .k{color:var(--steel)}
           <div class="pills" id="depthRow"></div>
           <div class="divider"></div>
           <label class="chkline"><input type="checkbox" id="glowChk"><span>Neon glow on accents</span></label>
+          <div class="divider"></div>
+          <div class="eyebrow" style="margin-bottom:9px">Vault entrance</div>
+          <div class="pills" id="entRow"></div>
+          <p class="hint" style="margin:9px 0 0">The door animation when MedVault opens.</p>
         </div></div>
         <div class="card" style="margin-top:16px"><div class="hd"><span class="t">Study targets &amp; time logging</span></div><div class="bd">
           <p class="hint" style="margin-top:0">Targets drive the tracker's progress bars and the dashed line on the daily chart. Nothing here changes your readiness score — time logged is effort, mastery is evidence.</p>
@@ -1088,7 +1092,7 @@ const DEFAULT = ()=>({
   version:3,
   settings:{ assessments:[], halfLifeDays:14, targetReps:4, recentWindow:10,
              dailyTargetMin:90, weeklyTargetMin:600, autoLogQuestions:true, maxSecsPerQ:300,
-             targetScore:85, theme:'default', depth:'default', glow:true, ghRepo:'', ghPath:'medvault-state.json', ghBranch:'', ghDataPath:'data',
+             targetScore:85, entrance:'tap', theme:'default', depth:'default', glow:true, ghRepo:'', ghPath:'medvault-state.json', ghBranch:'', ghDataPath:'data',
              gateLogin:false, devLogin:'zacd', syncEveryMin:0, syncPushDelaySec:30, workerUrl:'' },
   planner:{ currency:'$', dayStart:5, dayEnd:23 },
   los:{}, exams:{}, questions:{}, attempts:[], snapshots:[], events:[],
@@ -2375,6 +2379,11 @@ function renderSettings(){
     $$('#themeRow .swatch').forEach(x=>x.classList.remove('on')); el.classList.add('on'); });
   $$('#depthRow .pill').forEach(el=>el.onclick=()=>{ set.depth=el.dataset.d; save(); applyTheme();
     $$('#depthRow .pill').forEach(x=>x.classList.remove('on')); el.classList.add('on'); });
+  const ENTS=[['tap','Tap to enter'],['auto','Open by itself'],['off','Skip it']];
+  $('#entRow').innerHTML = ENTS.map(([id,l])=>`<div class="pill ${(set.entrance||'tap')===id?'on':''}" data-e="${id}">${l}</div>`).join('');
+  $$('#entRow .pill').forEach(el=>el.onclick=()=>{ set.entrance=el.dataset.e; save();
+    $$('#entRow .pill').forEach(x=>x.classList.remove('on')); el.classList.add('on');
+    if(el.dataset.e!=='off'){ showEntrance(); } });
   $('#glowChk').checked = set.glow!==false;
   $('#glowChk').onchange=e=>{ set.glow=e.target.checked; save(); applyTheme(); };
   $('#setTarget').value=set.targetScore??85;
@@ -4314,7 +4323,7 @@ async function syncInit(){
   await applyDeployConfig();
   if(workerUrl() && loginName && wkSess){ sync.kind='worker'; }
   if(loginRequired() && !loginName){ showLock(); return; }   // nothing syncs until they are in
-  if(loginName) hideLock();                                  // a stored login opens straight up
+  if(loginName && !entranceActive) hideLock();               // a stored login opens straight up
   if(loginName) setTimeout(()=>autoLibrary(false), 1500);
   let justSignedIn = false;
   try{ justSignedIn = await msHandleRedirect(); }catch(_){}   // returning from Microsoft
@@ -4907,6 +4916,13 @@ async function doLogout(){
 }
 
 /* ---- the gate ---- */
+let entranceActive = false;
+function showEntrance(){
+  if((S.settings.entrance||'tap')==='off') return false;
+  entranceActive = true;
+  showLock(null, {returning:true, noFocus:true});
+  return true;
+}
 function vaultDoorSVG(){
   const ticks = Array.from({length:48},(_,i)=>{
     const a=i*7.5*Math.PI/180, r1=i%4===0?118:123, r2=130;
@@ -4948,6 +4964,7 @@ function showLock(msg, opts){
     el.id='lockScreen'; el.className='vault';
     document.body.appendChild(el);
   }
+  const returning = !!(opts && opts.returning);
   const known = knownLogins.length;
   el.innerHTML = `
     <div class="vstage">
@@ -4955,15 +4972,16 @@ function showLock(msg, opts){
         ${vaultDoorSVG()}
         <div class="vcore">
           <h1 class="vbrand">MEDVAULT</h1>
-          <p class="vsub">${known? 'welcome back' : 'sealed'}</p>
-          <input type="text" class="vinput" id="lockWord" placeholder="login word"
-            autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
-          <button class="vgo" id="lockGo">Unlock</button>
+          <p class="vsub">${returning? esc(loginName||'') : (known? 'welcome back' : 'sealed')}</p>
+          ${returning? `<button class="vgo" id="vEnter">Enter</button>`
+            : `<input type="text" class="vinput" id="lockWord" placeholder="login word"
+                 autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+               <button class="vgo" id="lockGo">Unlock</button>`}
         </div>
       </div>
       <div class="vmsg" id="lockMsg">${msg?esc(msg):''}</div>
-      <button class="vcfgbtn" id="lockCfgToggle">connection</button>
-      <div class="vcfg" id="lockCfg">
+      ${returning?'':`<button class="vcfgbtn" id="lockCfgToggle">connection</button>`}
+      <div class="vcfg" id="lockCfg" ${returning?'style="display:none"':''}>
         <label class="fld"><span>Repository</span>
           <input type="text" id="lockRepo" placeholder="you/medvault-data" value="${esc(S.settings.ghRepo||'')}"
             autocapitalize="off" autocorrect="off" spellcheck="false"></label>
@@ -4974,6 +4992,20 @@ function showLock(msg, opts){
       </div>
     </div>`;
   document.body.classList.add('locked');
+
+  if(returning){
+    const enter = ()=>{ if(!entranceActive) return; entranceActive=false; hideLock(); };
+    const b=$('#vEnter'); if(b) b.onclick=enter;
+    el.querySelector('.vdoor').style.cursor='pointer';
+    el.querySelector('.vdoor').onclick=enter;
+    el.onkeydown=e=>{ if(e.key==='Enter'||e.key===' ') enter(); };
+    document.addEventListener('keydown', function once(e){
+      if(e.key==='Enter'||e.key===' '){ document.removeEventListener('keydown', once); enter(); }
+    });
+    if((S.settings.entrance||'tap')==='auto') setTimeout(enter, 1100);
+    setTimeout(()=>{ const x=$('#vEnter'); if(x) x.focus(); }, 350);
+    return;
+  }
 
   const msgEl = ()=>$('#lockMsg');
   const deny = t => {
@@ -5337,6 +5369,7 @@ function wire(){
     if(gap > 3*3600000){ tm.elapsed=(tm.elapsed||0)+3*3600000; tm.running=false; tm.startTs=null; save(); }
   }
   syncMobileClass(); applyTheme();
+  if(loginName || !loginRequired()) showEntrance();          // the door greets you every time
   try{
     if(window.matchMedia){
       const mq=window.matchMedia(MOBILE_Q);
