@@ -248,6 +248,9 @@ label.fld > span{display:block;font-family:var(--mono);font-size:10.5px;letter-s
 }
 
 /* ---------- login gate ---------- */
+.linkbtn{background:none;border:0;color:var(--muted);font-family:inherit;font-size:12.5px;
+  text-decoration:underline;text-underline-offset:3px;cursor:pointer;margin-top:14px;padding:4px}
+.linkbtn:hover{color:var(--teal)}
 body.locked{overflow:hidden}
 body.locked .app,body.locked .tabbar{filter:blur(3px);pointer-events:none;user-select:none}
 .lockscreen{position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;
@@ -3452,8 +3455,8 @@ async function autoLibrary(force){
   try{
     const last = (await DB.get('libCheckedAt')) || 0;
     if(!force && Date.now()-last < 6*3600000) return;      // at most four checks a day
-    await DB.set('libCheckedAt', Date.now());
-    await importFromRepo({quiet:true, jsonOnly:true});
+    const r = await importFromRepo({quiet:true, jsonOnly:true});
+    if(r) await DB.set('libCheckedAt', Date.now());        // only cool down after a real check
   }catch(_){}
 }
 function libraryIsEmpty(){
@@ -4343,7 +4346,9 @@ async function importFromRepo(opts){
     }
     sync.libFiles = found.map(f=>f.name);              // remembered for the publish check
     const seen = await libSeenGet();
-    const force = opts && opts.force;
+    // a wiped device still has the old SHA record; without this it would decide
+    // everything was already imported and download nothing
+    const force = (opts && opts.force) || libraryIsEmpty();
     if(opts && opts.jsonOnly) found = found.filter(f=>!/\.pdf$/i.test(f.name));
     const todo = found.filter(f=>{
       if(force) return true;
@@ -4506,7 +4511,10 @@ async function rememberLogin(name, dev){
 async function verifyLogin(word){
   const name = normLogin(word);
   if(!name) return {ok:false, reason:'empty'};
-  if(!workerUrl() && (!S.settings.ghRepo || !ghTok)) return {ok:false, reason:'config'};
+  if(!workerUrl()){
+    if(!S.settings.ghRepo) return {ok:false, reason:'norepo'};
+    if(!ghTok)            return {ok:false, reason:'notoken'};
+  }
   try{
     const r = await backend().verify(name);
     if(!r.ok) return r;
@@ -4535,13 +4543,20 @@ async function doLogin(word){
   renderView(current==='lock'?'dash':current); renderTop();
   return res;
 }
+function connSettings(){
+  const k = ['ghRepo','ghPath','ghBranch','ghDataPath','gateLogin','devLogin',
+             'syncEveryMin','syncPushDelaySec','msClientId','msPath'];
+  const out={}; for(const n of k) if(S.settings[n]!==undefined) out[n]=S.settings[n];
+  return out;
+}
 function resetForNewUser(){
-  const keep = { ghRepo:S.settings.ghRepo, ghBranch:S.settings.ghBranch, ghDataPath:S.settings.ghDataPath,
-                 gateLogin:S.settings.gateLogin, devLogin:S.settings.devLogin,
-                 syncEveryMin:S.settings.syncEveryMin, syncPushDelaySec:S.settings.syncPushDelaySec };
+  const keep = connSettings();
   S = DEFAULT();
   Object.assign(S.settings, keep);
   invalidateQIndex();
+  libSeen = {};
+  DB.set('libSeen', {});
+  DB.set('libCheckedAt', 0);
   DB.set('state', S);
 }
 async function doLogout(){
@@ -4573,6 +4588,17 @@ function showLock(msg){
         autocapitalize="off" autocorrect="off" spellcheck="false">
       <button class="btn primary" id="lockGo">Open</button>
       <div class="lockmsg" id="lockMsg">${msg?esc(msg):''}</div>
+      <button class="linkbtn" id="lockCfgToggle">Connection settings</button>
+      <div id="lockCfg" style="display:none;text-align:left;margin-top:14px">
+        <label class="fld"><span>Repository</span>
+          <input type="text" id="lockRepo" placeholder="you/medvault-data" value="${esc(S.settings.ghRepo||'')}"
+            autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+        <label class="fld"><span>Access token</span>
+          <input type="password" id="lockTok" placeholder="${ghTok?'••••••  saved on this device':'github_pat_…'}"
+            autocomplete="off"></label>
+        <button class="btn sm" id="lockSaveCfg" style="width:100%;justify-content:center">Save connection</button>
+        <p class="hint" style="margin:10px 0 0">Only needed if this device has been reset or is new.</p>
+      </div>
     </div>`;
   document.body.classList.add('locked');
   const go = async()=>{
@@ -4586,11 +4612,24 @@ function showLock(msg){
       $('#lockMsg').textContent =
         res.reason==='unknown' ? 'That word has no vault. Check the spelling, or ask for a new one.' :
         res.reason==='offline' ? 'No connection, and this word has not been used on this device before.' :
-        res.reason==='config'  ? 'This copy has no repository configured yet.' : 'Try again.';
+        res.reason==='norepo'  ? 'No repository set on this device — open Connection below.' :
+        res.reason==='notoken' ? 'No access token on this device — open Connection below.' : 'Try again.';
     } else if(res.offline){ toast('Opened offline — will sync when you are back online.'); }
   };
   $('#lockGo').onclick=go;
   $('#lockWord').onkeydown=e=>{ if(e.key==='Enter') go(); };
+  $('#lockCfgToggle').onclick=()=>{
+    const c=$('#lockCfg');
+    c.style.display = c.style.display==='none' ? 'block' : 'none';
+  };
+  $('#lockSaveCfg').onclick=async()=>{
+    const r=$('#lockRepo').value.trim().replace(/^https?:\/\/github\.com\//,'').replace(/\.git$/,'');
+    const t=$('#lockTok').value.trim();
+    if(r){ S.settings.ghRepo=r; if(!S.settings.ghPath) S.settings.ghPath=SYNC_FILE; save(); }
+    if(t){ ghTok=t; await DB.set('ghTok', t); $('#lockTok').value=''; }
+    $('#lockMsg').textContent='Connection saved — now enter your word.';
+    $('#lockWord').focus();
+  };
   setTimeout(()=>{ const i=$('#lockWord'); if(i) i.focus(); }, 60);
 }
 function hideLock(){
@@ -4733,7 +4772,9 @@ function wire(){
   $('#tplExam').onclick=()=>downloadText(SCHEMA_EXAM.replace(/\/\/[^\n]*/g,'').replace(/,(\s*[}\]])/g,'$1'),'exam.example.json');
   $('#tplPdfKey').onclick=()=>downloadText(SCHEMA_PDFKEY.replace(/\/\/[^\n]*/g,'').replace(/,(\s*[}\]])/g,'$1'),'exam.key.example.json');
   $('#resetProgress').onclick=()=>modal(confirmCard('Reset progress?','This clears every attempt, snapshot and session — your imported objectives and questions stay. Cannot be undone.','Reset progress',()=>{ S.attempts=[]; S.snapshots=[]; save(); closeModal(); renderView(current); renderTop(); toast('Progress reset.'); }));
-  $('#resetAll').onclick=()=>modal(confirmCard('Erase everything?','This wipes all objectives, exams, questions and progress from this browser. Export a backup first if unsure.','Erase all',()=>{ S=DEFAULT(); invalidateQIndex(); save(); closeModal(); go('dash'); toast('Everything erased.'); }));
+  $('#resetAll').onclick=()=>modal(confirmCard('Erase everything?','This wipes all objectives, exams, questions and progress from this browser. Export a backup first if unsure.','Erase all',()=>{ const conn=connSettings(); S=DEFAULT(); Object.assign(S.settings, conn);
+    invalidateQIndex(); libSeen={}; DB.set('libSeen',{}); DB.set('libCheckedAt',0); save(); closeModal(); go('dash');
+    toast('Data erased. The repo connection was kept so you can sign back in.'); }));
 
   // settings
   $('#addAssess').onclick=()=>{ S.settings.assessments.push({id:uid('as'),name:'New assessment',date:''}); save(); drawAssessList(); };
