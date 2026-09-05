@@ -461,6 +461,67 @@ body.locked .app,body.locked .tabbar{filter:blur(3px);pointer-events:none;user-s
   .vgauge .vg-arc,.vgauge .vg-hand,.vfinish,.vfinish *,.vcounter i{animation-duration:.01s!important}
 }
 
+/* ---------- review browser ---------- */
+body.rvopen{overflow:hidden}
+.rvwrap{position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;
+  padding:20px;background:rgba(4,8,11,.86);backdrop-filter:blur(9px);animation:vfade .22s ease both}
+.rvpanel{width:100%;max-width:1080px;max-height:92vh;max-height:92dvh;display:flex;flex-direction:column;
+  border:1px solid var(--line);border-radius:16px;background:var(--panel);overflow:hidden;
+  box-shadow:0 40px 100px -40px rgba(0,0,0,.95);animation:rvin .3s cubic-bezier(.2,.9,.3,1) both}
+@keyframes rvin{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+.rvhead{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line-soft);
+  background:var(--panel-2);flex-wrap:wrap}
+.rvcount{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.rvcount b{color:var(--teal);font-size:14px}
+.rvbody{display:grid;grid-template-columns:1fr 330px;gap:0;flex:1;min-height:0}
+.rvstage{overflow:auto;padding:16px;border-right:1px solid var(--line-soft);background:var(--ink-2);min-height:0}
+.rvstage .pdfscroll{height:calc(92vh - 150px);height:calc(92dvh - 150px);border:0;background:transparent}
+.rvstem{font-size:15.5px;line-height:1.55;margin-bottom:14px}
+.rvline{display:flex;gap:10px;padding:10px 12px;border-radius:10px;margin-bottom:7px;font-size:14px;
+  border:1px solid var(--line-soft);background:var(--panel-2)}
+.rvline .key{font-family:var(--mono);font-size:11.5px;width:22px;height:22px;border-radius:6px;flex:0 0 auto;
+  display:flex;align-items:center;justify-content:center;border:1px solid var(--line)}
+.rvline.ok{border-color:rgba(67,201,138,.45);background:rgba(67,201,138,.09);color:var(--green)}
+.rvline.bad{border-color:rgba(239,100,97,.4);background:rgba(239,100,97,.08);color:#ffb3b1}
+.rvside{overflow:auto;padding:16px;display:flex;flex-direction:column;gap:14px;min-height:0}
+.rvanswers{display:flex;flex-direction:column;gap:8px}
+.rvopt{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:11px;font-size:13.5px;
+  border:1px solid var(--line);background:var(--panel-2)}
+.rvopt .key{font-family:var(--mono);font-size:14px;width:28px;height:28px;border-radius:8px;flex:0 0 auto;
+  display:flex;align-items:center;justify-content:center;border:1px solid currentColor}
+.rvopt span:nth-child(2){flex:1;min-width:0}
+.rvopt i{font-family:var(--mono);font-size:10px;font-style:normal;opacity:.75;flex:0 0 auto}
+.rvopt.ok{border-color:rgba(67,201,138,.5);background:rgba(67,201,138,.1);color:var(--green)}
+.rvopt.bad{border-color:rgba(239,100,97,.45);background:rgba(239,100,97,.09);color:#ffb3b1}
+.rvexp{font-size:13px;line-height:1.6;color:var(--muted);padding:13px;border-radius:11px;
+  border:1px solid var(--line-soft);background:var(--panel-2)}
+.rvmeta{display:flex;gap:6px;flex-wrap:wrap}
+@media(max-width:860px){
+  .rvwrap{padding:0}
+  .rvpanel{max-width:none;max-height:100vh;max-height:100dvh;height:100%;border-radius:0;border:0}
+  .rvbody{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto}
+  .rvstage{border-right:0;border-bottom:1px solid var(--line-soft)}
+  .rvstage .pdfscroll{height:44vh;height:44dvh}
+  .rvside{max-height:44vh;max-height:44dvh}
+}
+
+/* ---------- yield ---------- */
+.ytag{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;
+  letter-spacing:.06em;padding:2px 8px;border-radius:999px;color:var(--yc);
+  border:1px solid color-mix(in srgb, var(--yc) 45%, transparent);
+  background:color-mix(in srgb, var(--yc) 12%, transparent)}
+.ytag::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--yc)}
+.yieldbox{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:12px;padding:10px 12px;
+  border:1px solid var(--line-soft);border-radius:10px;background:var(--ink-2)}
+.ylbl{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-2)}
+.ybtn{padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;
+  color:var(--muted);font-family:inherit;font-size:12px;cursor:pointer;transition:.14s}
+.ybtn:hover{color:var(--yc);border-color:var(--yc)}
+.ybtn.on{color:var(--yc);border-color:var(--yc);background:color-mix(in srgb, var(--yc) 14%, transparent);
+  box-shadow:0 0 14px -4px var(--yc)}
+.ymeta{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--muted-2)}
+@media(max-width:760px){ .yieldbox{gap:6px;padding:9px 10px} .ybtn{padding:7px 11px} .ymeta{margin-left:0;width:100%} }
+
 /* ---------- end-of-session review ---------- */
 .reviewbox{margin-top:20px;text-align:left}
 .revtoggle{width:100%;display:flex;align-items:center;gap:9px;padding:12px 14px;border-radius:12px;
@@ -1158,7 +1219,7 @@ const DEFAULT = ()=>({
   planner:{ currency:'$', dayStart:5, dayEnd:23 },
   los:{}, exams:{}, questions:{}, attempts:[], snapshots:[], events:[],
   sessions:[], todos:[], timer:{running:false, startTs:null, elapsed:0, los:[], kind:'reading'},
-  suspended:{},
+  suspended:{}, yieldAgg:{}, yieldVotes:{},
   meta:{rev:0, updatedAt:0}, gone:{},
   pdfExams:{}, pdfKeys:{}
 });
@@ -1743,13 +1804,16 @@ function renderStudySetup(){
     </div>
     <div id="scopeDetail" style="margin-top:16px"></div>
     <div id="attemptFilterWrap" style="margin-top:14px"></div>
-    <div class="divider"></div>
-    <div class="grid g-2" style="align-items:end">
+    <div class="divider" id="sessOptsDiv"></div>
+    <div class="grid g-2" id="sessOpts" style="align-items:end">
       <label class="fld" style="margin:0"><span>Questions this session</span>
         <input type="number" id="qCount" value="10" min="1" max="100"></label>
       <div style="display:flex;gap:10px">
         <label style="flex:1"><span class="eyebrow" style="display:block;margin-bottom:6px">Order</span>
-          <select id="qOrder"><option value="weak">Prioritise weak & unseen</option><option value="random">Fully random</option></select></label>
+          <select id="qOrder">
+            <option value="yield">Unseen &amp; high yield first</option>
+            <option value="weak">Prioritise weak objectives</option>
+            <option value="random">Fully random</option></select></label>
       </div>
     </div>
     <div id="poolInfo" class="hint" style="margin-top:12px"></div>
@@ -1765,7 +1829,7 @@ function renderStudySetup(){
   const detail=$('#scopeDetail');
   const attemptWrap=$('#attemptFilterWrap');
   function drawAttemptFilter(){
-    if(scope==='incorrect'){ attemptWrap.innerHTML=''; return; }
+    if(scope==='incorrect' || scope==='mini'){ attemptWrap.innerHTML=''; return; }
     attemptWrap.innerHTML = `<label class="chk" style="display:flex;align-items:center;gap:8px;cursor:pointer">
         <input type="checkbox" id="newOnlyChk"><span>Only questions not attempted at all</span>
       </label>
@@ -1779,9 +1843,12 @@ function renderStudySetup(){
     $('#includeIncChk').onchange=updatePool;
   }
   function drawDetail(){
+    const so=$('#sessOpts'), sod=$('#sessOptsDiv');
+    if(so)  so.style.display  = scope==='mini' ? 'none' : '';
+    if(sod) sod.style.display = scope==='mini' ? 'none' : '';
     if(scope==='mini'){
       detail.innerHTML = `
-        <p class="hint" style="margin:0">A fixed paper: <b>${MINI_PER} questions from every objective that has them</b>, drawn fresh each time. It covers the whole course rather than whatever you have practised most, and afterwards you get a heatmap of which weeks and topics held up.</p>
+        <p class="hint" style="margin:0">A fixed paper: <b>one question from every objective that has them</b>, drawn fresh each time. It covers the whole course rather than whatever you have practised most, and afterwards you get a heatmap of which weeks and topics held up.</p>
         <div id="miniInfo" class="hint" style="margin-top:10px"></div>`;
     } else if(scope==='weeks'){
       detail.innerHTML = `<div class="btnrow" style="justify-content:space-between;margin-bottom:8px">
@@ -1876,10 +1943,10 @@ function renderStudySetup(){
       for(const q of qs) for(const l of (q.los||[])) { if(!byLo.has(l)) byLo.set(l, []); byLo.get(l).push(q); }
       const picked = new Map();                       // a question covering two objectives counts once
       for(const lo of assessableLOs()){
-        const pool = (byLo.get(lo.id)||[]).slice().sort(()=>Math.random()-0.5);
+        const pool = weightedOrder((byLo.get(lo.id)||[]).slice());
         for(const q of pool.slice(0, per)) picked.set(q.id, q);
       }
-      return [...picked.values()].sort(()=>Math.random()-0.5);
+      return [...picked.values()].sort(()=>Math.random()-0.5);   // shuffle the finished paper
     }
     if(scope==='all') base=qs;
     else if(scope==='exam'){ const e=$('#examPills .pill.on'); base = e? qs.filter(q=>q.examId===e.dataset.e):[]; }
@@ -1928,11 +1995,14 @@ function renderStudySetup(){
   drawDetail();
   $('#beginBtn').onclick=()=>{
     let pool=(window.__pool||[]).slice();
+    if(scope==='mini'){ startQuiz(pool, scope); return; }      // fixed paper: every question, as built
     const n=clamp(parseInt($('#qCount').value)||10,1,pool.length);
     const order=$('#qOrder').value;
     if(order==='weak'){
       pool.forEach(q=>{ const ms=(q.los||[]).map(l=>loMastery(l).mastery); q.__w = 1 - (ms.length? ms.reduce((a,b)=>a+b,0)/ms.length : 0) + Math.random()*0.35; });
       pool.sort((a,b)=>b.__w-a.__w);
+    } else if(order==='yield'){
+      pool = weightedOrder(pool);
     } else { pool.sort(()=>Math.random()-0.5); }
     startQuiz(pool.slice(0,n), scope);
   };
@@ -1961,7 +2031,7 @@ function drawQuestion(){
       <span class="q-count">${quiz.i+1} / ${quiz.items.length}</span>
     </div>
     <div class="card"><div class="bd">
-      <div class="q-meta">${(q.los||[]).map(l=>`<span class="tag lo">${esc(l)}</span>`).join('')}</div>
+      <div class="q-meta">${(q.los||[]).map(l=>`<span class="tag lo">${esc(l)}</span>`).join('')}${yieldBadge(q.id)}</div>
       <div class="q-stem">${esc(q.stem)}</div>
       <div id="opts">${opts.map((o,i)=>`<button class="opt" data-i="${i}">
         <span class="key">${String.fromCharCode(65+i)}</span><span>${esc(o)}</span></button>`).join('')}</div>
@@ -2005,6 +2075,7 @@ function answer(sel){
   $('#afterQ').innerHTML = `
     ${q.explanation?`<div class="explain"><div class="lbl">${correct?'Correct':'Explanation'}</div>${esc(q.explanation)}</div>`:''}
     ${correct? confPickerHTML(at.id) : reasonPickerHTML(at.id)}
+    ${yieldPickerHTML(q.id)}
     <div class="btnrow" style="margin-top:16px;justify-content:flex-end">
       <span class="q-count" style="margin-right:auto">${correct?'<span style="color:var(--green)">✓ correct</span>':'<span style="color:var(--red)">✗ incorrect</span>'}</span>
       ${isDev()?`<button class="btn ghost sm" id="suspendQ" title="Retire this question for everyone">Suspend</button>`:''}
@@ -2018,6 +2089,7 @@ function answer(sel){
     toast('Suspended. Publish it from Data → Repo library to retire it for everyone.');
   };
   if(correct) wireConfPicker(at.id); else wireReasonPicker(at.id);
+  wireYield('#afterQ');
   $('#nextQ').onclick=()=>{ quiz.i++; drawQuestion(); };
   renderTop();
 }
@@ -2039,14 +2111,16 @@ const REASONS = [
 ];
 const reasonById = id => REASONS.find(r=>r.id===id) || null;
 const CONFS = [
-  {id:'sure',  label:'Knew it',  color:'#2CD0BF', advice:'Solid. This one is banked.'},
-  {id:'guess', label:'Guessed',  color:'#E8A13C', advice:'Counts half toward mastery — a lucky guess is not knowledge. Worth a proper look before the exam.'}
+  {id:'guess', label:'Lucky guess', color:'#E8A13C',
+   advice:'Counts half toward mastery — a guess that landed is not knowledge. Worth a proper look before the exam.'}
 ];
+/* Correct answers are assumed to be known. Only flag the exceptions. */
 function confPickerHTML(atId){
   return `<div class="reasonbox conf" id="confBox_${atId}">
-    <div class="lbl">Did you actually know it? <span style="color:var(--muted-2);text-transform:none;letter-spacing:0">— optional, keys 1–2</span></div>
-    <div class="reasons">${CONFS.map((c,i)=>`<button class="reason" data-conf="${c.id}" style="--rc:${c.color}">
-      <span class="rk">${i+1}</span>${c.label}</button>`).join('')}</div>
+    <div class="reasons" style="align-items:center">
+      <span class="lbl" style="margin:0 4px 0 0">Was it a fluke?</span>
+      <button class="reason" data-conf="guess" style="--rc:#E8A13C"><span class="rk">1</span>Lucky guess</button>
+    </div>
   </div>`;
 }
 function wireConfPicker(atId){
@@ -2155,6 +2229,8 @@ function finishQuiz(){
       <button class="btn primary" onclick='go("prog")'>See progress</button>
     </div>
   </div></div></div>`;
+  const ro=document.getElementById('rvOpen');
+  if(ro) ro.onclick=()=>openReviewBrowser(window.__lastWrong||[], 0);
   const fs=document.getElementById('finScore');
   if(fs){ const suffix=fs.querySelector('span'); const num=document.createElement('span');
     fs.textContent=''; fs.appendChild(num); if(suffix) fs.appendChild(suffix);
@@ -2321,7 +2397,7 @@ function hl(s){ return esc(s)
   .replace(/\/\/[^\n]*/g,'<span class="c">$&</span>'); }
 
 async function ingest(objs){
-  let addedLO=0, addedQ=0, addedExam=0, addedKey=0, addedIdx=0, addedSusp=0;
+  let addedLO=0, addedQ=0, addedExam=0, addedKey=0, addedIdx=0, addedSusp=0, addedYield=0;
   for(let raw of objs){
     if(raw && raw.type==='medvault_backup'){ // full restore handled elsewhere
       continue;
@@ -2329,12 +2405,13 @@ async function ingest(objs){
     const items = (raw && raw.type==='medvault_bundle') ? [].concat(raw.learning_objectives||[], raw.exams||[]) : [raw];
     for(const o of items){
       if(!o||typeof o!=='object') continue;
-      let type=o.type || (Array.isArray(o.ids) && !o.los && !o.questions ? 'suspended'
+      let type=o.type || (o.counts && !o.los && !o.questions ? 'yield'
+                 : Array.isArray(o.ids) && !o.los && !o.questions ? 'suspended'
                  : o.pdf && Array.isArray(o.index) ? 'pdf_index'
                  : o.pdf && Array.isArray(o.questions) && o.questions[0] && ('n' in o.questions[0]) ? 'exam_pdf_key'
                  : o.questions?'exam': (o.los||o.weeks)?'learning_objectives':null);
       // accept the prefixed names MedVault writes as well as the bare ones
-      type = ({medvault_suspended:'suspended', medvault_pdf_index:'pdf_index', medvault_pdf_key:'exam_pdf_key',
+      type = ({medvault_yield:'yield', medvault_suspended:'suspended', medvault_pdf_index:'pdf_index', medvault_pdf_key:'exam_pdf_key',
                medvault_los:'learning_objectives', medvault_exam:'exam'})[type] || type;
       if(type==='learning_objectives'){
         const weeks = o.weeks || [{week:o.week, title:o.title||o.weekTitle, los:o.los||[]}];
@@ -2361,6 +2438,8 @@ async function ingest(objs){
             questions:(o.questions||[]).map(q=>({ n:q.n, answer:q.answer??q.correct, los:(q.los||q.learningObjectives||q.lo||[]).map(String), topic:q.topic||null, explanation:q.explanation||q.rationale||'' })) };
           addedKey++;
         }
+      } else if(type==='yield'){
+        if(o.counts && typeof o.counts==='object'){ S.yieldAgg=o.counts; addedYield=Object.keys(o.counts).length; }
       } else if(type==='suspended'){
         if(Array.isArray(o.ids)){ S.suspended={}; for(const id of o.ids) S.suspended[id]=true; addedSusp=o.ids.length; }
       } else if(type==='pdf_index'){
@@ -2376,7 +2455,7 @@ async function ingest(objs){
     }
   }
   save();
-  return {addedLO, addedQ, addedExam, addedKey, addedIdx, addedSusp};
+  return {addedLO, addedQ, addedExam, addedKey, addedIdx, addedSusp, addedYield};
 }
 async function importFiles(files, opts){
   const objs=[], pdfs=[];
@@ -2990,6 +3069,7 @@ function drawPdfQuestion(q){
     <div class="card"><div class="bd">
       <div class="q-meta"><span class="tag" style="color:var(--steel);border-color:#274764">${esc(ex.title||'PDF paper')}</span>${(q.los||[]).map(l=>`<span class="tag lo">${esc(l)}</span>`).join('')}</div>
       <div id="pdfStudyView" class="pdfstudy"><div class="pdfloading">Loading paper…</div></div>
+      ${yieldPickerHTML(q.id)}
       <div class="hint pdfhint" style="margin:8px 2px 0">Read Q${q.n} in the paper — scroll up a little for any figure — then record your answer.</div>
       <div class="ansbar">
         <span class="ansq">Q${q.n}</span>
@@ -3782,7 +3862,7 @@ function drawReasonAnalytics(){
    Put that folder inside OneDrive/Dropbox/iCloud and every device that opens
    MedVault converges on the same data, with no server and no account.
    ============================================================ */
-const MINI_PER = 2;                 // questions drawn from every objective in a mini exam
+const MINI_PER = 1;                 // questions drawn from every objective in a mini exam
 const SYNC_FILE = 'medvault-state.json';
 const SYNC_FORMAT = 1;
 
@@ -3822,11 +3902,11 @@ const SYNC_ARRAYS = {
   events:    e => e.id || ('e:'+(e.date||'')+':'+(e.start||'')),
   todos:     t => t.id || ('t:'+t.created)
 };
-const SYNC_MAPS = ['los','exams','questions','pdfKeys','pdfExams','suspended'];
+const SYNC_MAPS = ['los','exams','questions','pdfKeys','pdfExams','suspended','yieldAgg'];
 /* Everything in LIBRARY_KEYS is rebuilt from the files in the repo library, so
    once that library exists there is no reason to carry a copy in every person's
    progress file. Stripping it keeps <word>-state.json to just their own work.  */
-const LIBRARY_KEYS = ['los','exams','questions','pdfKeys','pdfExams','suspended'];
+const LIBRARY_KEYS = ['los','exams','questions','pdfKeys','pdfExams','suspended','yieldAgg'];
 function splitState(st){
   const personal={}, library={};
   for(const k of Object.keys(st)){
@@ -4828,6 +4908,46 @@ async function publishIndexes(onProgress){
                                   : `All ${skipped} index${skipped===1?'':'es'} already current.`};
 }
 
+async function aggregateYield(onProgress){
+  const dir = ghDataDir();
+  const root = await ghListDir('');
+  const vaults = root.filter(f=>f.type==='file' && /-state\.json$/i.test(f.name));
+  if(!vaults.length) return {msg:'No vaults found to tally.'};
+  const counts={};
+  let people=0, votes=0;
+  for(const v of vaults){
+    if(onProgress) onProgress(v.name);
+    try{
+      const meta = await ghApi('GET', ghFileUrl(false, v.path));
+      if(typeof meta==='number') continue;
+      const txt = b64ToUtf8(meta.content||'');
+      const j = JSON.parse(txt);
+      const vv = j && j.state && j.state.yieldVotes;
+      if(!vv) continue;
+      people++;
+      for(const [qId,val] of Object.entries(vv)){
+        const k = val==='high'?'h' : val==='low'?'l' : 'm';
+        counts[qId] = counts[qId] || {h:0,m:0,l:0};
+        counts[qId][k]++; votes++;
+      }
+    }catch(_){}
+  }
+  const path = (dir? dir+'/':'')+'yield.json';
+  const text = JSON.stringify({type:'medvault_yield', updated:new Date().toISOString(), counts});
+  const cur = await ghApi('GET', ghFileUrl(false, path));
+  let sha=null;
+  if(cur!==404 && typeof cur!=='number'){
+    if(b64ToUtf8(cur.content||'')===text) return {msg:`Already current — ${votes} votes from ${people} vault${people===1?'':'s'}.`};
+    sha=cur.sha;
+  }
+  const body={ message:'MedVault · yield tally ('+votes+' votes)', content:utf8ToB64(text), branch:S.settings.ghBranch||undefined };
+  if(sha) body.sha=sha;
+  const res = await ghApi('PUT', ghFileUrl(true, path), JSON.stringify(body));
+  if(typeof res==='number') throw new Error('publish failed ('+res+')');
+  S.yieldAgg = counts; save();
+  return {msg:`Published — ${votes} vote${votes===1?'':'s'} from ${people} vault${people===1?'':'s'} across ${Object.keys(counts).length} questions.`};
+}
+
 async function publishSuspended(){
   const ids = Object.keys(S.suspended||{});
   const dir = ghDataDir();
@@ -4880,6 +5000,12 @@ function drawRepoCard(){
     </div>
     <div id="repoStatus" style="margin-top:12px"></div>
     ${isDev()? `<div class="divider"></div>
+      <div class="eyebrow" style="margin-bottom:8px">Yield ratings</div>
+      <p class="hint" style="margin:0 0 10px">Collects everyone's high/medium/low flags from their vaults and publishes the tally to <b class="mono">yield.json</b>, which every device then reads.</p>
+      <div class="btnrow" style="margin-bottom:16px">
+        <button class="btn" id="aggYield">Tally yield votes</button>
+        <span class="eyebrow" id="yieldMsg">${Object.keys(S.yieldAgg||{}).length} rated · ${Object.keys(S.yieldVotes||{}).length} of yours</span>
+      </div>
       <div class="eyebrow" style="margin-bottom:8px">Suspended questions</div>
       <p class="hint" style="margin:0 0 10px"><b>${Object.keys(S.suspended||{}).length}</b> suspended on this device. Publishing retires them for everyone — they stop being served and stop counting toward anybody's statistics.</p>
       <div class="btnrow" style="margin-bottom:16px">
@@ -4904,6 +5030,14 @@ function drawRepoCard(){
     const b=$('#repoImport'); b.disabled=true;
     await importFromRepo({});
     const b2=$('#repoImport'); if(b2) b2.disabled=false;
+  };
+  const ay=$('#aggYield');
+  if(ay) ay.onclick=async()=>{
+    ay.disabled=true; const m=$('#yieldMsg');
+    try{ const r=await aggregateYield(n=>{ if(m) m.textContent='reading '+n+'…'; });
+      if(m) m.textContent=r.msg; toast(r.msg); }
+    catch(e){ if(m) m.textContent='Failed — '+(e.message||'error'); }
+    const b=$('#aggYield'); if(b) b.disabled=false;
   };
   const sp=$('#pubSusp');
   if(sp) sp.onclick=async()=>{
@@ -5268,6 +5402,7 @@ function sessionGuessed(){
 }
 function reviewHTML(){
   const wrong=sessionWrong(), guessed=sessionGuessed();
+  window.__lastWrong = wrong;                 // the browser outlives the quiz object
   if(!wrong.length && !guessed.length) return '';
   const card = (item, kind) => {
     const {q, at}=item;
@@ -5296,14 +5431,123 @@ function reviewHTML(){
       </div></div>`;
   };
   return `<div class="reviewbox">
-    <button class="revtoggle" onclick="this.parentNode.classList.toggle('open')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
-      Review ${wrong.length} wrong${guessed.length? ' and '+guessed.length+' guessed':''}
-    </button>
+    <div class="btnrow" style="gap:9px">
+      <button class="revtoggle" onclick="this.closest('.reviewbox').classList.toggle('open')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        Review ${wrong.length} wrong${guessed.length? ' and '+guessed.length+' guessed':''}
+      </button>
+      ${wrong.length?`<button class="btn" id="rvOpen" style="flex:0 0 auto">Browse in paper</button>`:''}
+    </div>
     <div class="revlist">
       ${wrong.map(x=>card(x,'wrong')).join('')}
       ${guessed.map(x=>card(x,'guess')).join('')}
     </div></div>`;
+}
+
+/* ============================================================
+   REVIEW BROWSER
+   Step through the ones you got wrong. For paper questions the PDF is mounted
+   and jumps straight to that question, so you read it exactly as it was asked.
+   ============================================================ */
+let rvw = null;
+function openReviewBrowser(items, i){
+  if(!items || !items.length) return;
+  rvw = {items, i: clamp(i||0, 0, items.length-1)};
+  let el=$('#rvwrap');
+  if(!el){ el=document.createElement('div'); el.id='rvwrap'; el.className='rvwrap'; document.body.appendChild(el); }
+  document.body.classList.add('rvopen');
+  drawReviewBrowser();
+  document.addEventListener('keydown', rvKeys);
+}
+function closeReviewBrowser(){
+  const el=$('#rvwrap'); if(el) el.remove();
+  document.body.classList.remove('rvopen');
+  document.removeEventListener('keydown', rvKeys);
+  rvw=null;
+}
+function rvKeys(e){
+  if(!rvw) return;
+  if(e.key==='Escape'){ e.preventDefault(); closeReviewBrowser(); }
+  if(e.key==='ArrowRight'){ e.preventDefault(); rvStep(1); }
+  if(e.key==='ArrowLeft'){ e.preventDefault(); rvStep(-1); }
+}
+function rvStep(d){
+  if(!rvw) return;
+  rvw.i = (rvw.i + d + rvw.items.length) % rvw.items.length;
+  drawReviewBrowser();
+}
+function rvAnswerStrip(q, at){
+  const raw = at && at.chosen;
+  const mine = (typeof raw==='number') ? 'ABCDE'[raw] : raw;
+  const right = String(q.answer||'').toUpperCase();
+  const cell = (key, text, kind) => `<div class="rvopt ${kind}">
+      <span class="key">${esc(String(key||'?'))}</span>
+      ${text?`<span>${esc(text)}</span>`:''}
+      <i>${kind==='ok'?'correct answer':'you chose'}</i></div>`;
+  const optText = k => {
+    const idx='ABCDE'.indexOf(String(k||'').toUpperCase());
+    const t=(q.options||[])[idx];
+    return (q.source==='pdf' || !t) ? '' : t;
+  };
+  return `<div class="rvanswers">
+    ${mine? cell(mine, optText(mine), 'bad') : '<div class="rvopt bad"><span class="key">—</span><i>no answer recorded</i></div>'}
+    ${cell(right, optText(right), 'ok')}
+  </div>`;
+}
+async function drawReviewBrowser(){
+  const el=$('#rvwrap'); if(!el || !rvw) return;
+  const {q, at} = rvw.items[rvw.i];
+  const r = at && at.reason ? reasonById(at.reason) : null;
+  el.innerHTML = `
+    <div class="rvpanel">
+      <div class="rvhead">
+        <button class="iconbtn" id="rvPrev" title="Previous (←)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <div class="rvcount"><b>${rvw.i+1}</b> of ${rvw.items.length} wrong${q.n?` · Q${q.n}`:''}</div>
+        <button class="iconbtn" id="rvNext" title="Next (→)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></button>
+        <div style="flex:1"></div>
+        ${yieldBadge(q.id)}
+        <button class="iconbtn del" id="rvClose" title="Close (Esc)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+      </div>
+      <div class="rvbody">
+        <div class="rvstage" id="rvStage">${q.source==='pdf'
+          ? `<div class="hint" style="padding:14px">Opening ${esc(q.pdfId||'paper')}…</div>`
+          : `<div class="rvstem">${esc(q.stem||'')}</div>
+             ${(q.options||[]).map((t,i)=>{
+               const k='ABCDE'[i];
+               const isC=String(k)===String(q.answer||'').toUpperCase();
+               const raw=at&&at.chosen; const mine=(typeof raw==='number')?'ABCDE'[raw]:raw;
+               const isP=String(k)===String(mine||'').toUpperCase();
+               return `<div class="rvline ${isC?'ok':''} ${isP&&!isC?'bad':''}">
+                 <span class="key">${k}</span><span>${esc(t)}</span></div>`;
+             }).join('')}`}
+        </div>
+        <div class="rvside">
+          ${rvAnswerStrip(q, at)}
+          ${q.explanation?`<div class="rvexp"><div class="eyebrow" style="margin-bottom:7px">Explanation</div>${esc(q.explanation)}</div>`:''}
+          <div class="rvmeta">
+            ${(q.los||[]).map(l=>`<span class="tag lo" title="${esc((S.los[l]||{}).text||'')}">${esc(l)}</span>`).join('')}
+            ${r?`<span class="mini-tag" style="color:${r.color};border-color:${r.color}55">${esc(r.short)}</span>`:''}
+          </div>
+          ${yieldPickerHTML(q.id)}
+        </div>
+      </div>
+    </div>`;
+  $('#rvPrev').onclick=()=>rvStep(-1);
+  $('#rvNext').onclick=()=>rvStep(1);
+  $('#rvClose').onclick=closeReviewBrowser;
+  el.onclick=e=>{ if(e.target===el) closeReviewBrowser(); };
+  wireYield('#rvwrap');
+  if(q.source==='pdf' && q.pdfId){
+    const stage=$('#rvStage');
+    try{ await pvMount(stage, q.pdfId, q.n); }
+    catch(err){
+      stage.innerHTML = `<div class="hint" style="padding:16px;color:var(--amber)">
+        Couldn't open ${esc(q.pdfId)} on this device. ${esc((err&&err.message)||'')}</div>`;
+    }
+  }
 }
 
 /* ============================================================
@@ -5393,6 +5637,95 @@ function lifetimeResults(){
   return map;
 }
 
+/* ============================================================
+   YIELD
+   Everyone can flag a question high / medium / low. Votes are personal and ride
+   in each person's own file; the developer tallies them into data/yield.json,
+   which everyone then reads. An unflagged question scores the same as medium,
+   so an unrated bank behaves exactly as it does today.
+   ============================================================ */
+const YIELDS = [
+  {id:'low',  label:'Low',    short:'low yield',  color:'#8A9CAB', v:-1},
+  {id:'med',  label:'Medium', short:'med yield',  color:'#5FA0E6', v: 0},
+  {id:'high', label:'High',   short:'high yield', color:'#E8A13C', v: 1}
+];
+const yieldById = id => YIELDS.find(y=>y.id===id) || null;
+function myVote(qId){ return (S.yieldVotes||{})[qId] || null; }
+/* Weighted mean of every vote cast, with this device's own vote folded in.
+   Returns -1..1, where 0 is "medium or unrated".                            */
+function yieldScore(qId){
+  const agg = (S.yieldAgg||{})[qId];
+  let sum=0, n=0;
+  if(agg){ sum += (agg.h||0)*1 + (agg.m||0)*0 + (agg.l||0)*-1; n += (agg.h||0)+(agg.m||0)+(agg.l||0); }
+  const mine = myVote(qId);
+  if(mine){ const y=yieldById(mine); if(y){ sum += y.v; n += 1; } }   // your own opinion always counts
+  if(!n) return 0;
+  return clamp(sum/n, -1, 1);
+}
+function yieldVotes(qId){
+  const agg=(S.yieldAgg||{})[qId]||{};
+  return (agg.h||0)+(agg.m||0)+(agg.l||0) + (myVote(qId)?1:0);
+}
+function yieldLabel(qId){
+  const sc=yieldScore(qId);
+  if(sc >= 0.34) return YIELDS[2];
+  if(sc <= -0.34) return YIELDS[0];
+  return YIELDS[1];
+}
+function castVote(qId, id){
+  S.yieldVotes = S.yieldVotes || {};
+  if(S.yieldVotes[qId]===id) delete S.yieldVotes[qId]; else S.yieldVotes[qId]=id;
+  save();
+}
+/* Selection weight: unseen first, then yield. A high-yield question you have
+   never touched is the most likely to come up; a low-yield one you already got
+   right is the least.                                                        */
+function qWeight(q){
+  const atts = questionAttempts(q.id);
+  let w;
+  if(!atts.length) w = 3.0;                                  // never attempted
+  else if(!atts[atts.length-1].correct) w = 1.6;             // currently wrong
+  else w = 0.8;
+  const sc = yieldScore(q.id);
+  w *= sc >= 0 ? (1 + sc) : (1 + sc*0.6);                    // high ×2, medium ×1, low ×0.4
+  return Math.max(0.05, w);
+}
+function weightedOrder(arr){
+  const pool = arr.map(q=>({q, w:qWeight(q)}));
+  const out=[];
+  let total = pool.reduce((s,x)=>s+x.w,0);
+  while(pool.length){
+    let r = Math.random()*total, i = 0;
+    while(i<pool.length-1 && (r-=pool[i].w) > 0) i++;
+    total -= pool[i].w;
+    out.push(pool.splice(i,1)[0].q);
+  }
+  return out;
+}
+function yieldBadge(qId, opts){
+  const y=yieldLabel(qId), n=yieldVotes(qId);
+  if(!n && !(opts&&opts.always)) return '';
+  return `<span class="ytag" style="--yc:${y.color}" title="${n} vote${n===1?'':'s'}">${y.short}${n>1?` ·${n}`:''}</span>`;
+}
+function yieldPickerHTML(qId){
+  const mine=myVote(qId);
+  return `<div class="yieldbox">
+    <span class="ylbl">Yield</span>
+    ${YIELDS.map(y=>`<button class="ybtn ${mine===y.id?'on':''}" data-yield="${y.id}" data-q="${esc(qId)}"
+      style="--yc:${y.color}">${y.label}</button>`).join('')}
+    <span class="ymeta" id="ymeta_${esc(qId)}">${yieldVotes(qId)? yieldVotes(qId)+' vote'+(yieldVotes(qId)===1?'':'s'):'unrated'}</span>
+  </div>`;
+}
+function wireYield(root){
+  $$((root||'')+' [data-yield]').forEach(b=>b.onclick=()=>{
+    castVote(b.dataset.q, b.dataset.yield);
+    const box=b.closest('.yieldbox');
+    box.querySelectorAll('[data-yield]').forEach(x=>x.classList.toggle('on', x.dataset.yield===myVote(b.dataset.q)));
+    const m=box.querySelector('.ymeta');
+    if(m){ const n=yieldVotes(b.dataset.q); m.textContent = n? n+' vote'+(n===1?'':'s') : 'unrated'; }
+  });
+}
+
 /* ---- count a number up, vault-dial style ---- */
 function countUp(el, to, ms=900){
   if(!el) return;
@@ -5462,7 +5795,7 @@ function wire(){
     if(current==='study' && $('#studyRun').style.display!=='none' && quiz){
       const opts=$$('#opts .opt'); if(opts.length && !opts[0].disabled){ const k=e.key.toUpperCase(); const idx='ABCDE'.indexOf(k); if(idx>=0&&idx<opts.length){ opts[idx].click(); } }
       const cb=document.querySelector('[id^="confBox_"]');
-      if(cb && /^[1-2]$/.test(e.key)){ const b=cb.querySelectorAll('[data-conf]')[+e.key-1]; if(b){ e.preventDefault(); b.click(); } }
+      if(cb && e.key==='1'){ const b=cb.querySelector('[data-conf]'); if(b){ e.preventDefault(); b.click(); } }
       const rb=document.querySelector('[id^="reasonBox_"]');
       if(rb && /^[1-5]$/.test(e.key)){ const btns=rb.querySelectorAll('[data-reason]'); const b=btns[+e.key-1]; if(b){ e.preventDefault(); b.click(); } }
       if((e.key==='Enter'||e.key===' ') && $('#nextQ')){ e.preventDefault(); $('#nextQ').click(); }
