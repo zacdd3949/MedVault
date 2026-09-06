@@ -505,6 +505,34 @@ body.rvopen{overflow:hidden}
   .rvside{max-height:44vh;max-height:44dvh}
 }
 
+/* ---------- publish ---------- */
+.dropzone{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  padding:26px 16px;border:1.5px dashed var(--line);border-radius:14px;background:var(--ink-2);
+  cursor:pointer;transition:.16s;text-align:center}
+.dropzone:hover,.dropzone.over{border-color:var(--teal);background:rgba(44,208,191,.06)}
+.dropzone svg{width:26px;height:26px;color:var(--teal);opacity:.8}
+.dropzone b{font-size:13.5px;font-weight:500}
+.dropzone span{font-size:11.5px;color:var(--muted-2);font-family:var(--mono)}
+.uprows{display:flex;flex-direction:column;gap:7px}
+.uprow{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;
+  padding:9px 11px;border:1px solid var(--line-soft);border-radius:10px;background:var(--panel-2);font-size:12.5px}
+.uprow.off{opacity:.5}
+.uptag{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;
+  padding:3px 7px;border-radius:5px;border:1px solid var(--line);color:var(--muted-2);white-space:nowrap}
+.uptag.k-pdf{color:#EF6461;border-color:rgba(239,100,97,.4)}
+.uptag.k-key{color:#5FA0E6;border-color:rgba(95,160,230,.4)}
+.uptag.k-los{color:var(--teal);border-color:var(--teal-dim)}
+.uptag.k-app{color:#A78BFA;border-color:rgba(167,139,250,.4)}
+.upname{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.upname i{color:var(--muted-2);font-style:normal;font-size:11px}
+.uppath{font-family:var(--mono);font-size:10.5px;color:var(--muted-2);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;max-width:230px}
+.uplog{padding:11px 13px;border-radius:10px;font-size:12.5px;line-height:1.6;margin-top:10px}
+.uplog b{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:5px}
+.uplog.ok{border:1px solid var(--teal-dim);background:rgba(44,208,191,.07);color:var(--muted)}
+.uplog.bad{border:1px solid rgba(239,100,97,.4);background:rgba(239,100,97,.07);color:#ffb3b1}
+@media(max-width:760px){ .uprow{grid-template-columns:auto 1fr auto} .uppath{display:none} }
+
 /* ---------- yield ---------- */
 .ytag{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;
   letter-spacing:.06em;padding:2px 8px;border-radius:999px;color:var(--yc);
@@ -1074,6 +1102,10 @@ pre.code .k{color:var(--steel)}
         <div class="card" style="margin-bottom:16px"><div class="hd"><span class="t">Sync</span><div class="grow"></div>
           <span class="eyebrow">medvault-state.json · multi-device</span></div>
           <div class="bd" id="syncBox"></div></div>
+        <div id="publishCardWrap"><div class="card" style="margin-bottom:16px"><div class="hd">
+          <span class="t">Publish to repo</span><div class="grow"></div>
+          <span class="eyebrow">papers · keys · objectives · app</span></div>
+          <div class="bd" id="publishBox"></div></div></div>
         <div id="repoCardWrap"><div class="card" style="margin-bottom:16px"><div class="hd"><span class="t">Repo library</span><div class="grow"></div>
           <span class="eyebrow">read-only source files</span></div>
           <div class="bd" id="repoBox"></div></div></div>
@@ -1214,7 +1246,7 @@ const DEFAULT = ()=>({
   version:3,
   settings:{ assessments:[], halfLifeDays:14, targetReps:4, recentWindow:10,
              dailyTargetMin:90, weeklyTargetMin:600, autoLogQuestions:true, maxSecsPerQ:300,
-             targetScore:85, entrance:'tap', theme:'default', depth:'default', glow:true, ghRepo:'', ghPath:'medvault-state.json', ghBranch:'', ghDataPath:'data',
+             targetScore:85, entrance:'tap', theme:'default', depth:'default', glow:true, ghRepo:'', ghPath:'medvault-state.json', ghBranch:'', ghDataPath:'data', ghAppRepo:'', ghAppPath:'index.html',
              gateLogin:false, devLogin:'zacd', syncEveryMin:0, syncPushDelaySec:30, workerUrl:'' },
   planner:{ currency:'$', dayStart:5, dayEnd:23 },
   los:{}, exams:{}, questions:{}, attempts:[], snapshots:[], events:[],
@@ -2303,13 +2335,13 @@ function drawProgTable(sortBy){
    ============================================================ */
 function devOnlyCards(){
   const show = !loginRequired() || isDev();     // a personal install keeps everything
-  ['#repoCardWrap','#importCardWrap','#formatCardWrap'].forEach(sel=>{
+  ['#publishCardWrap','#repoCardWrap','#importCardWrap','#formatCardWrap'].forEach(sel=>{
     const el=$(sel); if(el) el.style.display = show? '' : 'none';
   });
 }
 function renderData(){
   renderTop();
-  drawAcctCard(); drawSyncCard(); drawRepoCard(); drawInstallHint(); refreshMsSignedIn(); devOnlyCards();
+  drawAcctCard(); drawSyncCard(); drawPublishCard(); drawRepoCard(); drawInstallHint(); refreshMsSignedIn(); devOnlyCards();
   $('#schemaLO').innerHTML = hl(SCHEMA_LO);
   $('#schemaExam').innerHTML = hl(SCHEMA_EXAM);
   $('#schemaPdfKey').innerHTML = hl(SCHEMA_PDFKEY);
@@ -4231,6 +4263,58 @@ function utf8ToB64(str){
   for(let i=0;i<bytes.length;i+=CH) bin += String.fromCharCode.apply(null, bytes.subarray(i,i+CH));
   return btoa(bin);
 }
+function bytesToB64(bytes){
+  const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  let bin='', CH=0x8000;
+  for(let i=0;i<u8.length;i+=CH) bin += String.fromCharCode.apply(null, u8.subarray(i,i+CH));
+  return btoa(bin);
+}
+/* Minimal ZIP reader — enough to open the bundles Claude hands you. Compressed
+   entries go through the browser's own inflate; stored entries are copied.   */
+async function readZip(buf){
+  const u8 = new Uint8Array(buf), dv = new DataView(buf);
+  let eo=-1;
+  for(let i=u8.length-22; i>=0 && i>u8.length-22-65536; i--){ if(dv.getUint32(i,true)===0x06054b50){ eo=i; break; } }
+  if(eo<0) throw new Error('not a zip file');
+  const count=dv.getUint16(eo+10,true);
+  let p=dv.getUint32(eo+16,true);
+  const out=[];
+  for(let i=0;i<count;i++){
+    if(dv.getUint32(p,true)!==0x02014b50) break;
+    const method=dv.getUint16(p+10,true), csize=dv.getUint32(p+20,true);
+    const nlen=dv.getUint16(p+28,true), elen=dv.getUint16(p+30,true), clen=dv.getUint16(p+32,true);
+    const lho=dv.getUint32(p+42,true);
+    const name=new TextDecoder().decode(u8.subarray(p+46, p+46+nlen));
+    p += 46+nlen+elen+clen;
+    const lnlen=dv.getUint16(lho+26,true), lelen=dv.getUint16(lho+28,true);
+    const start=lho+30+lnlen+lelen;
+    if(!/\/$/.test(name) && !/^__MACOSX|\/\._/.test(name))
+      out.push({name:name.split('/').pop(), path:name, method, data:u8.subarray(start,start+csize)});
+  }
+  return out;
+}
+async function unzipEntry(e){
+  if(e.method===0) return e.data.slice();
+  if(typeof DecompressionStream!=='function') throw new Error('this browser cannot expand compressed zips');
+  const stream = new Blob([e.data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+/* Write any file to a repo, creating or updating as needed. */
+async function ghPutFile(path, b64, message, repo){
+  const base = repo ? 'https://api.github.com/repos/'+repo.replace(/^\/+|\/+$/g,'') : ghBase();
+  const enc = String(path).replace(/^\/+/,'').split('/').map(encodeURIComponent).join('/');
+  const br = S.settings.ghBranch;
+  const getUrl = base+'/contents/'+enc+(br?'?ref='+encodeURIComponent(br):'');
+  const cur = await ghApi('GET', getUrl);
+  const body = { message, content:b64, branch: br||undefined };
+  if(cur!==404 && typeof cur!=='number'){
+    if((cur.content||'').replace(/\s/g,'') === b64) return {skipped:true};
+    body.sha = cur.sha;
+  }
+  const res = await ghApi('PUT', base+'/contents/'+enc, JSON.stringify(body));
+  if(typeof res==='number') throw new Error(path+' failed ('+res+')');
+  return {ok:true, updated: !!body.sha};
+}
 function b64ToUtf8(b64){
   const bin = atob(String(b64).replace(/\s/g,''));     // GitHub wraps base64 in newlines
   const bytes = new Uint8Array(bin.length);
@@ -4908,6 +4992,138 @@ async function publishIndexes(onProgress){
                                   : `All ${skipped} index${skipped===1?'':'es'} already current.`};
 }
 
+/* ============================================================
+   PUBLISH — put new material into the repo from inside the app
+   ============================================================ */
+function classifyUpload(name, bytes){
+  const n = name.toLowerCase();
+  if(/\.pdf$/.test(n))  return {kind:'pdf'};
+  if(/\.html?$/.test(n)) return {kind:'app'};
+  if(/\.json$/.test(n)){
+    let j=null;
+    try{ j = JSON.parse(new TextDecoder().decode(bytes)); }catch(_){ return {kind:'bad', why:'not valid JSON'}; }
+    const t = j.type||'';
+    if(t==='learning_objectives' || j.weeks || j.los) return {kind:'los', json:j};
+    if(t==='exam_pdf_key' || (j.pdf && Array.isArray(j.questions))) return {kind:'key', json:j};
+    if(t==='medvault_pdf_index' || (j.pdf && Array.isArray(j.index))) return {kind:'index', json:j};
+    return {kind:'json', json:j};
+  }
+  return {kind:'skip', why:'not a pdf, json or html file'};
+}
+/* Find the objectives file already in the library so a new week merges into it
+   rather than replacing the whole course.                                     */
+async function findLosFile(){
+  const dir = ghDataDir();
+  for(const f of await ghListDir(dir)){
+    if(f.type!=='file' || !/\.json$/i.test(f.name)) continue;
+    if(!/objectiv|l-?os/i.test(f.name)) continue;
+    try{
+      const meta = await ghApi('GET', ghFileUrl(false, f.path));
+      if(typeof meta==='number') continue;
+      const j = JSON.parse(b64ToUtf8(meta.content||''));
+      if(j.type==='learning_objectives' || j.weeks || j.los) return {path:f.path, json:j};
+    }catch(_){}
+  }
+  return null;
+}
+function mergeLos(existing, incoming){
+  const weeksOf = j => j && Array.isArray(j.weeks) ? j.weeks
+    : (j && j.los ? [{week:j.week ?? 0, title:j.title||j.weekTitle||('Week '+(j.week??0)), los:j.los}] : []);
+  const cur = weeksOf(existing), add = weeksOf(incoming);
+  const map = new Map(cur.map(w=>[String(w.week), w]));
+  const replaced=[], added=[];
+  for(const w of add){
+    const k=String(w.week);
+    (map.has(k)? replaced : added).push(w.week);
+    map.set(k, w);
+  }
+  const weeks=[...map.values()].sort((a,b)=>(a.week||0)-(b.week||0));
+  return { json:{type:'learning_objectives', weeks}, replaced, added, kept: cur.length-replaced.length };
+}
+let upQueue = [];
+async function stageUploads(fileList){
+  const staged=[];
+  for(const f of fileList){
+    const buf = await f.arrayBuffer();
+    if(/\.zip$/i.test(f.name)){
+      let entries=[];
+      try{ entries = await readZip(buf); }
+      catch(e){ staged.push({name:f.name, kind:'bad', why:e.message}); continue; }
+      for(const e of entries){
+        try{
+          const bytes = await unzipEntry(e);
+          staged.push({name:e.name, bytes, from:f.name, ...classifyUpload(e.name, bytes)});
+        }catch(err){ staged.push({name:e.name, kind:'bad', why:err.message, from:f.name}); }
+      }
+    } else {
+      const bytes = new Uint8Array(buf);
+      staged.push({name:f.name, bytes, ...classifyUpload(f.name, bytes)});
+    }
+  }
+  upQueue = staged;
+  return staged;
+}
+function uploadTarget(item){
+  const dir = ghDataDir(), d = dir? dir+'/' : '';
+  switch(item.kind){
+    case 'pdf':   return d+'papers/'+item.name;
+    case 'key':   return d+'keys/'+item.name;
+    case 'index': return d+'index/'+item.name;
+    case 'los':   return '(merged into the objectives file)';
+    case 'app':   return (S.settings.ghAppRepo||'app repo')+' / '+(S.settings.ghAppPath||'index.html');
+    case 'json':  return d+item.name;
+    default:      return '—';
+  }
+}
+async function publishUploads(onProgress){
+  const done=[], fail=[];
+  const say = m => onProgress && onProgress(m);
+  // objectives first, since a merge needs the current file
+  const losItems = upQueue.filter(i=>i.kind==='los');
+  if(losItems.length){
+    say('merging objectives…');
+    const existing = await findLosFile();
+    let base = existing ? existing.json : {type:'learning_objectives', weeks:[]};
+    let summary=null;
+    for(const it of losItems){ const m=mergeLos(base, it.json); base=m.json; summary=m; }
+    const path = existing ? existing.path : ((ghDataDir()? ghDataDir()+'/':'')+(losItems[0].name||'learning-objectives.json'));
+    try{
+      await ghPutFile(path, utf8ToB64(JSON.stringify(base, null, 2)), 'MedVault · objectives update');
+      done.push(`${path.split('/').pop()} — ${summary.added.length? 'added week '+summary.added.join(', ')+'; ':''}${summary.replaced.length? 'replaced week '+summary.replaced.join(', ')+'; ':''}kept ${summary.kept} other week${summary.kept===1?'':'s'}`);
+    }catch(e){ fail.push('objectives — '+e.message); }
+  }
+  for(const it of upQueue){
+    if(it.kind==='los' || it.kind==='bad' || it.kind==='skip') continue;
+    say('uploading '+it.name+'…');
+    try{
+      if(it.kind==='app'){
+        const repo = S.settings.ghAppRepo;
+        if(!repo){ fail.push(it.name+' — set the app repository first'); continue; }
+        const r = await ghPutFile(S.settings.ghAppPath||'index.html', bytesToB64(it.bytes), 'MedVault · app update', repo);
+        done.push(it.name+(r.skipped?' — already current':' → '+repo));
+        if(!r.skipped) await bumpServiceWorker(repo).catch(()=>{});
+      } else {
+        const r = await ghPutFile(uploadTarget(it), bytesToB64(it.bytes), 'MedVault · add '+it.name);
+        done.push(it.name+(r.skipped?' — already current':(r.updated?' — replaced':' — added')));
+      }
+    }catch(e){ fail.push(it.name+' — '+e.message); }
+  }
+  upQueue=[];
+  return {done, fail};
+}
+/* Without this a new index.html never reaches devices that already cached one. */
+async function bumpServiceWorker(repo){
+  const base='https://api.github.com/repos/'+repo.replace(/^\/+|\/+$/g,'');
+  const cur = await ghApi('GET', base+'/contents/sw.js');
+  if(cur===404 || typeof cur==='number') return;
+  const txt = b64ToUtf8(cur.content||'');
+  const next = txt.replace(/(const\s+CACHE\s*=\s*['"]medvault-v)(\d+)(['"])/,
+    (m,a,n,c)=> a+(parseInt(n,10)+1)+c);
+  if(next===txt) return;
+  await ghApi('PUT', base+'/contents/sw.js', JSON.stringify({
+    message:'MedVault · bump cache', content:utf8ToB64(next), sha:cur.sha, branch:S.settings.ghBranch||undefined }));
+}
+
 async function aggregateYield(onProgress){
   const dir = ghDataDir();
   const root = await ghListDir('');
@@ -4980,6 +5196,79 @@ async function fetchPdfFromRepo(pdfId){
   return true;
 }
 
+function drawPublishCard(){
+  const box=$('#publishBox'); if(!box) return;
+  if(!ADAPTERS.github.ready()){
+    box.innerHTML=`<p class="hint" style="margin:0">Set up GitHub sync first.</p>`; return;
+  }
+  box.innerHTML = `
+    <p class="hint" style="margin:0 0 12px">Drop in exam PDFs, marking keys, an objectives file, a new <b class="mono">index.html</b>, or a zip containing any of them. Each is routed to the right place in the repo.</p>
+    <div class="dropzone" id="upDrop">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 16V4m0 0L7 9m5-5l5 5M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+      <b>Drop files here</b><span>or click to choose · pdf, json, html, zip</span>
+      <input type="file" id="upFiles" multiple accept=".pdf,.json,.html,.zip" hidden>
+    </div>
+    <div id="upList" style="margin-top:12px"></div>
+    <div class="btnrow" style="margin-top:12px">
+      <button class="btn primary" id="upGo" disabled>Publish</button>
+      <button class="btn sm ghost" id="upClear" disabled>Clear</button>
+      <span class="eyebrow" id="upMsg"></span>
+    </div>
+    <div class="divider"></div>
+    <div class="grid g-2" style="align-items:start">
+      <label class="fld" style="margin:0"><span>App repository (for index.html)</span>
+        <input type="text" id="ghAppRepo" placeholder="you/medvault" value="${esc(S.settings.ghAppRepo||'')}">
+        <div class="hint">The public repo serving the site — not your data repo.</div></label>
+      <label class="fld" style="margin:0"><span>App file path</span>
+        <input type="text" id="ghAppPath" value="${esc(S.settings.ghAppPath||'index.html')}">
+        <div class="hint">Publishing it also bumps the service-worker cache so devices pick it up.</div></label>
+    </div>`;
+  const ar=$('#ghAppRepo'), ap=$('#ghAppPath');
+  if(ar) ar.onchange=e=>{ S.settings.ghAppRepo=e.target.value.trim().replace(/^https?:\/\/github\.com\//,'').replace(/\.git$/,''); save(); };
+  if(ap) ap.onchange=e=>{ S.settings.ghAppPath=e.target.value.trim().replace(/^\/+/,'')||'index.html'; save(); };
+
+  const drop=$('#upDrop'), input=$('#upFiles');
+  drop.onclick=()=>input.click();
+  ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{ e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{ e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop',e=>{ if(e.dataTransfer && e.dataTransfer.files.length) takeUploads(e.dataTransfer.files); });
+  input.onchange=()=>{ if(input.files.length) takeUploads(input.files); };
+  $('#upClear').onclick=()=>{ upQueue=[]; drawUploadList(); };
+  $('#upGo').onclick=async()=>{
+    const b=$('#upGo'), m=$('#upMsg');
+    b.disabled=true; $('#upClear').disabled=true;
+    const r = await publishUploads(t=>{ if(m) m.textContent=t; });
+    if(m) m.textContent='';
+    $('#upList').innerHTML =
+      (r.done.length? `<div class="uplog ok"><b>Published</b>${r.done.map(x=>`<div>${esc(x)}</div>`).join('')}</div>`:'') +
+      (r.fail.length? `<div class="uplog bad"><b>Failed</b>${r.fail.map(x=>`<div>${esc(x)}</div>`).join('')}</div>`:'');
+    toast(r.fail.length? 'Published with '+r.fail.length+' failure(s).' : 'Published '+r.done.length+' item(s).');
+    if(r.done.length) await importFromRepo({quiet:true});
+  };
+  drawUploadList();
+}
+async function takeUploads(files){
+  const m=$('#upMsg'); if(m) m.textContent='reading…';
+  try{ await stageUploads([...files]); }catch(e){ toast('Could not read those files.', true); }
+  if(m) m.textContent='';
+  drawUploadList();
+}
+function drawUploadList(){
+  const el=$('#upList'); if(!el) return;
+  if(!upQueue.length){ el.innerHTML=''; $('#upGo').disabled=true; $('#upClear').disabled=true; return; }
+  const LBL={pdf:'exam paper',key:'marking key',los:'objectives',index:'paper index',app:'app file',json:'data file',bad:'unreadable',skip:'ignored'};
+  el.innerHTML = `<div class="uprows">${upQueue.map((it,i)=>`
+    <div class="uprow ${it.kind==='bad'||it.kind==='skip'?'off':''}">
+      <span class="uptag k-${it.kind}">${LBL[it.kind]||it.kind}</span>
+      <span class="upname">${esc(it.name)}${it.from?` <i>from ${esc(it.from)}</i>`:''}</span>
+      <span class="uppath">${esc(it.why || uploadTarget(it))}</span>
+      <button class="iconbtn del" data-updel="${i}" title="Remove">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>`).join('')}</div>`;
+  $$('#upList [data-updel]').forEach(b=>b.onclick=()=>{ upQueue.splice(+b.dataset.updel,1); drawUploadList(); });
+  const usable = upQueue.some(i=>!['bad','skip'].includes(i.kind));
+  $('#upGo').disabled=!usable; $('#upClear').disabled=false;
+}
 function drawRepoCard(){
   const box=$('#repoBox'); if(!box) return;
   if(sync.kind!=='github' || !ADAPTERS.github.ready()){
